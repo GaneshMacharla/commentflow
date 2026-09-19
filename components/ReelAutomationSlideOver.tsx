@@ -155,6 +155,10 @@ export default function ReelAutomationSlideOver({
       const payload = {
         name,
         mediaId,
+        mediaCaption: media?.caption,
+        mediaThumbnailUrl: media?.thumbnailUrl,
+        mediaType: media?.mediaType,
+        permalink: media?.permalink,
         matchType,
         matchMode,
         keywords,

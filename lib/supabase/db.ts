@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { supabaseAdmin } from './admin';
 import { Automation, EventStatus, ActionType, MatchType, MatchMode } from '../automation/types';
 import { encryptToken, decryptToken } from '../security/encryption';
@@ -58,8 +59,97 @@ export async function checkAndSetIdempotency(eventId: string, source = 'instagra
   return true;
 }
 
+function isValidUuid(val?: string | null): boolean {
+  if (!val) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(val);
+}
+
+async function resolveUserId(preferredUserId?: string): Promise<string> {
+  if (preferredUserId && isValidUuid(preferredUserId)) {
+    return preferredUserId;
+  }
+  if (isSupabaseConfigured()) {
+    try {
+      const { data: profs } = await supabaseAdmin.from('profiles').select('id').limit(1);
+      if (profs && profs.length > 0 && profs[0].id) {
+        return profs[0].id;
+      }
+      // Create admin profile if none exists
+      const { data: newUser } = await supabaseAdmin.auth.admin.createUser({
+        email: 'admin@commentflow.local',
+        email_confirm: true,
+        user_metadata: { full_name: 'CommentFlow Admin' },
+      });
+      if (newUser?.user?.id) {
+        return newUser.user.id;
+      }
+    } catch (e) {
+      console.warn('Could not query/create profile for user_id:', e);
+    }
+  }
+  return crypto.randomUUID();
+}
+
+async function resolveMediaId(
+  accountId: string,
+  mediaId: string | null,
+  extra?: {
+    caption?: string;
+    thumbnailUrl?: string;
+    permalink?: string;
+    mediaType?: string;
+  }
+): Promise<string | null> {
+  if (!mediaId) return null;
+  if (!isSupabaseConfigured()) return mediaId;
+
+  try {
+    // 1. If it is already a valid UUID existing in public.media
+    if (isValidUuid(mediaId)) {
+      const { data: m } = await supabaseAdmin
+        .from('media')
+        .select('id')
+        .eq('id', mediaId)
+        .maybeSingle();
+      if (m?.id) return m.id;
+    }
+
+    // 2. Check by instagram_media_id
+    const { data: m } = await supabaseAdmin
+      .from('media')
+      .select('id')
+      .eq('instagram_media_id', mediaId)
+      .maybeSingle();
+    if (m?.id) return m.id;
+
+    // 3. Upsert row into public.media so foreign key works
+    const { data: inserted } = await supabaseAdmin
+      .from('media')
+      .upsert(
+        {
+          instagram_account_id: accountId,
+          instagram_media_id: mediaId,
+          media_type: extra?.mediaType || 'REEL',
+          caption: extra?.caption || '',
+          thumbnail_url: extra?.thumbnailUrl || '',
+          permalink: extra?.permalink || '',
+          timestamp: new Date().toISOString(),
+        },
+        { onConflict: 'instagram_media_id' }
+      )
+      .select('id')
+      .single();
+
+    if (inserted?.id) return inserted.id;
+  } catch (err) {
+    console.error('Failed to resolve media ID in Supabase:', err);
+  }
+
+  return null;
+}
+
 /**
- * Fetches automations with their triggers and actions.
+ * Fetches automations with their triggers, actions, and media.
  */
 export async function getAutomations(accountId?: string): Promise<Automation[]> {
   if (isSupabaseConfigured()) {
@@ -78,9 +168,11 @@ export async function getAutomations(accountId?: string): Promise<Automation[]> 
           error_reason,
           created_at,
           updated_at,
+          media:media_id ( id, instagram_media_id, caption, thumbnail_url, media_type, permalink ),
           triggers ( id, automation_id, keyword ),
           actions ( id, automation_id, action_type, message )
-        `);
+        `)
+        .order('created_at', { ascending: false });
 
       if (accountId) {
         query = query.eq('instagram_account_id', accountId);
@@ -92,7 +184,17 @@ export async function getAutomations(accountId?: string): Promise<Automation[]> 
           id: a.id,
           userId: a.user_id,
           instagramAccountId: a.instagram_account_id,
-          mediaId: a.media_id,
+          mediaId: a.media?.instagram_media_id || a.media_id || null,
+          media: a.media
+            ? {
+                id: a.media.id,
+                instagramMediaId: a.media.instagram_media_id,
+                caption: a.media.caption,
+                thumbnailUrl: a.media.thumbnail_url,
+                mediaType: a.media.media_type,
+                permalink: a.media.permalink,
+              }
+            : null,
           name: a.name,
           status: a.status,
           matchType: a.match_type,
@@ -148,6 +250,10 @@ export async function createAutomation(payload: {
   userId?: string;
   instagramAccountId: string;
   mediaId: string | null;
+  mediaCaption?: string;
+  mediaThumbnailUrl?: string;
+  mediaType?: string;
+  permalink?: string;
   name: string;
   matchType: MatchType;
   matchMode: MatchMode;
@@ -155,11 +261,11 @@ export async function createAutomation(payload: {
   publicReply?: string;
   privateMessage?: string;
 }): Promise<Automation> {
-  const id = `auto-${Date.now()}`;
+  const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  const triggers = payload.keywords.map((kw, i) => ({
-    id: `trig-${Date.now()}-${i}`,
+  const triggers = payload.keywords.map((kw) => ({
+    id: crypto.randomUUID(),
     automationId: id,
     keyword: kw.trim(),
   }));
@@ -167,7 +273,7 @@ export async function createAutomation(payload: {
   const actions = [];
   if (payload.publicReply && payload.publicReply.trim()) {
     actions.push({
-      id: `act-${Date.now()}-pub`,
+      id: crypto.randomUUID(),
       automationId: id,
       actionType: 'PUBLIC_REPLY' as ActionType,
       message: payload.publicReply.trim(),
@@ -175,18 +281,90 @@ export async function createAutomation(payload: {
   }
   if (payload.privateMessage && payload.privateMessage.trim()) {
     actions.push({
-      id: `act-${Date.now()}-priv`,
+      id: crypto.randomUUID(),
       automationId: id,
       actionType: 'PRIVATE_MESSAGE' as ActionType,
       message: payload.privateMessage.trim(),
     });
   }
 
+  let dbMediaId: string | null = null;
+  let targetUserId = payload.userId || 'user-default';
+
+  if (isSupabaseConfigured()) {
+    targetUserId = await resolveUserId(payload.userId);
+    dbMediaId = await resolveMediaId(payload.instagramAccountId, payload.mediaId, {
+      caption: payload.mediaCaption,
+      thumbnailUrl: payload.mediaThumbnailUrl,
+      mediaType: payload.mediaType,
+      permalink: payload.permalink,
+    });
+
+    const { error: autoErr } = await supabaseAdmin
+      .from('automations')
+      .insert([
+        {
+          id,
+          user_id: targetUserId,
+          instagram_account_id: payload.instagramAccountId,
+          media_id: dbMediaId,
+          name: payload.name,
+          status: 'ACTIVE',
+          match_type: payload.matchType,
+          match_mode: payload.matchMode,
+        },
+      ])
+      .select()
+      .single();
+
+    if (autoErr) {
+      console.error('Supabase auto insert error:', autoErr);
+      throw new Error(`Failed to save automation: ${autoErr.message}`);
+    }
+
+    if (triggers.length > 0) {
+      const { error: trigErr } = await supabaseAdmin.from('triggers').insert(
+        triggers.map((t) => ({
+          id: t.id,
+          automation_id: id,
+          keyword: t.keyword,
+        }))
+      );
+      if (trigErr) {
+        console.error('Supabase triggers insert error:', trigErr);
+        throw new Error(`Failed to save triggers: ${trigErr.message}`);
+      }
+    }
+
+    if (actions.length > 0) {
+      const { error: actErr } = await supabaseAdmin.from('actions').insert(
+        actions.map((act) => ({
+          id: act.id,
+          automation_id: id,
+          action_type: act.actionType,
+          message: act.message,
+        }))
+      );
+      if (actErr) {
+        console.error('Supabase actions insert error:', actErr);
+        throw new Error(`Failed to save actions: ${actErr.message}`);
+      }
+    }
+  }
+
   const newAuto: Automation = {
     id,
-    userId: payload.userId || 'user-default',
+    userId: targetUserId,
     instagramAccountId: payload.instagramAccountId,
     mediaId: payload.mediaId || null,
+    media: payload.mediaThumbnailUrl || payload.mediaCaption ? {
+      id: dbMediaId || id,
+      instagramMediaId: payload.mediaId || undefined,
+      caption: payload.mediaCaption,
+      thumbnailUrl: payload.mediaThumbnailUrl,
+      mediaType: payload.mediaType,
+      permalink: payload.permalink,
+    } : null,
     name: payload.name,
     status: 'ACTIVE',
     matchType: payload.matchType,
@@ -196,54 +374,6 @@ export async function createAutomation(payload: {
     createdAt: now,
     updatedAt: now,
   };
-
-  if (isSupabaseConfigured()) {
-    try {
-      const { data: autoRow, error: autoErr } = await supabaseAdmin
-        .from('automations')
-        .insert([
-          {
-            id,
-            user_id: newAuto.userId && newAuto.userId !== 'user-default' ? newAuto.userId : null,
-            instagram_account_id: newAuto.instagramAccountId,
-            media_id: newAuto.mediaId,
-            name: newAuto.name,
-            status: newAuto.status,
-            match_type: newAuto.matchType,
-            match_mode: newAuto.matchMode,
-          },
-        ])
-        .select()
-        .single();
-
-      if (autoErr) throw autoErr;
-
-      if (triggers.length > 0) {
-        await supabaseAdmin.from('triggers').insert(
-          triggers.map((t) => ({
-            id: t.id,
-            automation_id: id,
-            keyword: t.keyword,
-          }))
-        );
-      }
-
-      if (actions.length > 0) {
-        await supabaseAdmin.from('actions').insert(
-          actions.map((act) => ({
-            id: act.id,
-            automation_id: id,
-            action_type: act.actionType,
-            message: act.message,
-          }))
-        );
-      }
-
-      return newAuto;
-    } catch (err) {
-      console.error('Failed to create automation in Supabase:', err);
-    }
-  }
 
   localStore.automations.unshift(newAuto);
   return newAuto;
@@ -384,6 +514,37 @@ export function saveConnectedAccountLocally(account: {
  */
 export function clearConnectedAccountLocally() {
   localStore.accounts = [];
+}
+
+/**
+ * Saves or updates media items in Supabase.
+ */
+export async function saveMedia(accountId: string, mediaItems: any[]) {
+  if (!mediaItems || mediaItems.length === 0) return;
+  if (isSupabaseConfigured()) {
+    try {
+      const rows = mediaItems.map((item) => ({
+        instagram_account_id: accountId,
+        instagram_media_id: item.id || item.instagramMediaId,
+        media_type:
+          item.media_product_type === 'REELS' ||
+          item.media_type === 'VIDEO' ||
+          item.mediaType === 'REEL'
+            ? 'REEL'
+            : item.media_type || item.mediaType || 'IMAGE',
+        caption: item.caption || '',
+        thumbnail_url:
+          item.thumbnail_url || item.thumbnailUrl || item.media_url || item.mediaUrl || '',
+        permalink: item.permalink || '',
+        timestamp: item.timestamp || new Date().toISOString(),
+        like_count: item.like_count ?? item.likeCount ?? 0,
+        comments_count: item.comments_count ?? item.commentsCount ?? 0,
+      }));
+      await supabaseAdmin.from('media').upsert(rows, { onConflict: 'instagram_media_id' });
+    } catch (err) {
+      console.error('Failed to save media to Supabase:', err);
+    }
+  }
 }
 
 /**

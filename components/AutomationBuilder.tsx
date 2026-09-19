@@ -244,9 +244,17 @@ export default function AutomationBuilder({
         finalDmText = `[FOLLOW_GATE: ${followGateMessage}]\n\n${finalDmText}`;
       }
 
+      const selectedMediaObj = mediaList.find(
+        (m) => (m.instagramMediaId || m.id) === selectedMediaId
+      );
+
       const payload = {
         name,
         mediaId: targetMode === 'SPECIFIC' ? selectedMediaId : null,
+        mediaCaption: selectedMediaObj?.caption,
+        mediaThumbnailUrl: selectedMediaObj?.thumbnailUrl || selectedMediaObj?.mediaUrl,
+        mediaType: selectedMediaObj?.mediaType,
+        permalink: selectedMediaObj?.permalink,
         matchType,
         matchMode,
         keywords: triggerCondition === 'ANY_COMMENT' ? ['*'] : keywords,

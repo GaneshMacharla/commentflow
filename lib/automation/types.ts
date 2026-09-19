@@ -22,6 +22,14 @@ export interface Automation {
   userId: string;
   instagramAccountId: string;
   mediaId: string | null; // null means all posts & reels
+  media?: {
+    id: string;
+    instagramMediaId?: string;
+    caption?: string;
+    thumbnailUrl?: string;
+    mediaType?: string;
+    permalink?: string;
+  } | null;
   name: string;
   status: AutomationStatus;
   matchType: MatchType;

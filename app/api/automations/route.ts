@@ -5,6 +5,10 @@ import { z } from 'zod';
 const createAutomationSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   mediaId: z.string().nullable().optional(),
+  mediaCaption: z.string().optional(),
+  mediaThumbnailUrl: z.string().optional(),
+  mediaType: z.string().optional(),
+  permalink: z.string().optional(),
   matchType: z.enum(['CONTAINS', 'EXACT', 'STARTS_WITH', 'ENDS_WITH']).default('CONTAINS'),
   matchMode: z.enum(['ANY', 'ALL']).default('ANY'),
   keywords: z.array(z.string()).min(1, 'At least one keyword is required'),
@@ -35,11 +39,20 @@ export async function POST(request: NextRequest) {
     const validated = createAutomationSchema.parse(json);
 
     const account = await getConnectedAccount();
-    const accountId = account?.id || 'acc-1';
+    if (!account) {
+      return NextResponse.json(
+        { error: 'No connected Instagram account found. Please connect your account first.' },
+        { status: 400 }
+      );
+    }
 
     const automation = await createAutomation({
-      instagramAccountId: accountId,
+      instagramAccountId: account.id,
       mediaId: validated.mediaId || null,
+      mediaCaption: validated.mediaCaption,
+      mediaThumbnailUrl: validated.mediaThumbnailUrl,
+      mediaType: validated.mediaType,
+      permalink: validated.permalink,
       name: validated.name,
       matchType: validated.matchType,
       matchMode: validated.matchMode,

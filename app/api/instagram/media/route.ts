@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getMedia, getConnectedAccount } from '@/lib/supabase/db';
+import { getMedia, getConnectedAccount, saveMedia } from '@/lib/supabase/db';
 import { fetchInstagramMedia } from '@/lib/instagram/media';
 
 export async function GET() {
@@ -14,6 +14,9 @@ export async function GET() {
     if (account.accessToken) {
       try {
         const liveMedia = await fetchInstagramMedia(account.instagramUserId, account.accessToken);
+        // Persist fresh media items to Supabase
+        await saveMedia(account.id, liveMedia);
+
         return NextResponse.json({
           connected: true,
           account: {

@@ -171,9 +171,24 @@ export default function AutomationsPage() {
                   <div className="space-y-2 text-xs">
                     <div className="flex items-center gap-2">
                       <span className="text-slate-400">Target:</span>
-                      <span className="text-slate-200 font-medium">
-                        {auto.mediaId ? `Specific Post (${auto.mediaId})` : 'All Posts & Reels'}
-                      </span>
+                      {auto.media ? (
+                        <div className="flex items-center gap-2 min-w-0">
+                          {auto.media.thumbnailUrl && (
+                            <img
+                              src={auto.media.thumbnailUrl}
+                              alt="Reel thumbnail"
+                              className="w-5 h-5 rounded object-cover shrink-0 border border-white/10"
+                            />
+                          )}
+                          <span className="text-slate-200 font-medium truncate max-w-[220px]">
+                            {auto.media.caption || `Reel (${auto.mediaId})`}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-slate-200 font-medium">
+                          {auto.mediaId ? `Specific Post (${auto.mediaId})` : 'All Posts & Reels'}
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2">
