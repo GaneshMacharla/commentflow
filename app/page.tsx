@@ -52,7 +52,6 @@ export default function DashboardPage() {
   const [account, setAccount] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [isDemoConnecting, setIsDemoConnecting] = useState(false);
   const [mediaFilter, setMediaFilter] = useState<'ALL' | 'REELS' | 'IMAGES'>('ALL');
   const [simulatorOpen, setSimulatorOpen] = useState(false);
 
@@ -106,21 +105,6 @@ export default function DashboardPage() {
     }
   };
 
-  const handleConnectDemo = async () => {
-    setIsDemoConnecting(true);
-    try {
-      const res = await fetch('/api/instagram/demo-connect', { method: 'POST' });
-      const data = await res.json();
-      if (data.success && data.account) {
-        setAccount(data.account);
-        await loadData();
-      }
-    } catch (err) {
-      console.error('Demo connection failed:', err);
-    } finally {
-      setIsDemoConnecting(false);
-    }
-  };
 
   const handleDisconnect = async () => {
     if (!confirm('Are you sure you want to disconnect this Instagram account?')) return;
@@ -221,18 +205,6 @@ export default function DashboardPage() {
             >
               <InstagramIcon className="w-5 h-5 text-white" />
               <span>{isConnecting ? 'Opening Instagram Login…' : 'Continue with Instagram'}</span>
-            </button>
-
-            <button
-              id="connect-demo-btn"
-              onClick={handleConnectDemo}
-              disabled={isDemoConnecting}
-              className="flex items-center justify-center gap-2 py-3.5 px-5 rounded-2xl font-semibold text-xs bg-white/5 hover:bg-white/10 text-slate-200 border border-white/15 hover:border-purple-500/40 transition-all cursor-pointer"
-            >
-              <Zap className="w-4 h-4 text-amber-400" />
-              <span>
-                {isDemoConnecting ? 'Loading Demo Feed…' : '⚡ Try Demo Creator (@replykaro.creator)'}
-              </span>
             </button>
           </div>
 

@@ -30,7 +30,6 @@ function InstagramConnectPageInner() {
   const [account, setAccount] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [isDemoConnecting, setIsDemoConnecting] = useState(false);
   const [activeAccordion, setActiveAccordion] = useState<number | null>(null);
 
   // Banners from OAuth callback redirect
@@ -80,24 +79,7 @@ function InstagramConnectPageInner() {
     }
   };
 
-  const handleConnectDemo = async () => {
-    setIsDemoConnecting(true);
-    setErrorBanner(null);
-    try {
-      const res = await fetch('/api/instagram/demo-connect', { method: 'POST' });
-      const data = await res.json();
-      if (data.success && data.account) {
-        setAccount(data.account);
-        setSuccessBanner(true);
-      } else {
-        throw new Error(data.error || 'Failed to connect demo account');
-      }
-    } catch (err: any) {
-      setErrorBanner(err.message || 'Failed to connect demo account.');
-    } finally {
-      setIsDemoConnecting(false);
-    }
-  };
+
 
   const handleDisconnect = async () => {
     if (!confirm('Are you sure you want to disconnect this Instagram account?')) return;
@@ -366,30 +348,6 @@ function InstagramConnectPageInner() {
               <InstagramIcon className="w-5 h-5 text-white shrink-0" />
               <span>{isConnecting ? 'Opening Instagram Authorization…' : 'Continue with Instagram'}</span>
             </button>
-
-            {/* Divider */}
-            <div className="relative flex py-2 items-center">
-              <div className="flex-grow border-t border-white/10"></div>
-              <span className="flex-shrink mx-4 text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
-                Or Instant Preview
-              </span>
-              <div className="flex-grow border-t border-white/10"></div>
-            </div>
-
-            {/* Instant Demo Account Button */}
-            <button
-              onClick={handleConnectDemo}
-              disabled={isDemoConnecting}
-              className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-2xl font-semibold text-xs bg-white/5 hover:bg-white/10 text-slate-200 border border-white/15 hover:border-purple-500/40 transition-all group"
-            >
-              <Zap className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
-              <span>
-                {isDemoConnecting ? 'Loading Demo Creator Studio…' : '⚡ Connect Demo Account (@replykaro.creator)'}
-              </span>
-            </button>
-            <p className="text-[11px] text-center text-slate-500">
-              Instant access with 6 sample Reels & Posts. No Instagram login required.
-            </p>
           </div>
 
           {/* Trust Guarantee Badges */}

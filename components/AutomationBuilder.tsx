@@ -503,7 +503,7 @@ export default function AutomationBuilder({
                   </div>
                 ) : mediaList.length === 0 ? (
                   <div className="p-8 text-center rounded-2xl bg-white/[0.02] border border-white/5 text-slate-400 text-xs">
-                    No published media found. Connect your Instagram account or try the demo account.
+                    No published media found. Connect your Instagram Professional account to view your Reels and Posts.
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-96 overflow-y-auto pr-1">

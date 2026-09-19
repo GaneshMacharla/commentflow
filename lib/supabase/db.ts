@@ -17,85 +17,10 @@ interface LocalStore {
   events: any[];
 }
 
-export const DEFAULT_DEMO_MEDIA = [
-  {
-    id: 'media-reel-1',
-    instagramAccountId: 'ig-demo-creator',
-    instagramMediaId: '18029348123984711',
-    mediaType: 'VIDEO',
-    caption: '🚀 5 AI Tools that will 10x your productivity in 2026. Comment "TOOLS" and I will send you the complete list with direct links in your DM! 👇',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80',
-    permalink: 'https://instagram.com/p/C3demoReel1',
-    timestamp: new Date(Date.now() - 3600 * 1000 * 4).toISOString(),
-    likeCount: 1420,
-    commentsCount: 382,
-  },
-  {
-    id: 'media-reel-2',
-    instagramAccountId: 'ig-demo-creator',
-    instagramMediaId: '18029348123984712',
-    mediaType: 'VIDEO',
-    caption: 'How I scaled from $0 to $10k/mo with zero ad spend 🔥 Drop "ROADMAP" below and I\'ll DM you the free 24-page step-by-step PDF!',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=600&auto=format&fit=crop&q=80',
-    permalink: 'https://instagram.com/p/C3demoReel2',
-    timestamp: new Date(Date.now() - 3600 * 1000 * 24).toISOString(),
-    likeCount: 2890,
-    commentsCount: 745,
-  },
-  {
-    id: 'media-post-3',
-    instagramAccountId: 'ig-demo-creator',
-    instagramMediaId: '18029348123984713',
-    mediaType: 'CAROUSEL_ALBUM',
-    caption: 'Complete Meta Graph API Cheatsheet for Developers 💻 Comment "CODE" to get the GitHub starter kit repo link!',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=80',
-    permalink: 'https://instagram.com/p/C3demoPost3',
-    timestamp: new Date(Date.now() - 3600 * 1000 * 48).toISOString(),
-    likeCount: 890,
-    commentsCount: 156,
-  },
-  {
-    id: 'media-reel-4',
-    instagramAccountId: 'ig-demo-creator',
-    instagramMediaId: '18029348123984714',
-    mediaType: 'VIDEO',
-    caption: 'The secret to automating 1,000+ Instagram DMs every day safely without getting banned ⚡ Comment "LINK" for full tutorial access!',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1618172193763-c511deb635ca?w=600&auto=format&fit=crop&q=80',
-    permalink: 'https://instagram.com/p/C3demoReel4',
-    timestamp: new Date(Date.now() - 3600 * 1000 * 72).toISOString(),
-    likeCount: 3410,
-    commentsCount: 912,
-  },
-  {
-    id: 'media-post-5',
-    instagramAccountId: 'ig-demo-creator',
-    instagramMediaId: '18029348123984715',
-    mediaType: 'IMAGE',
-    caption: 'New Notion Creator Operating System is finally live! ✨ Comment "NOTION" to get the 50% launch discount link!',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=600&auto=format&fit=crop&q=80',
-    permalink: 'https://instagram.com/p/C3demoPost5',
-    timestamp: new Date(Date.now() - 3600 * 1000 * 96).toISOString(),
-    likeCount: 670,
-    commentsCount: 88,
-  },
-  {
-    id: 'media-reel-6',
-    instagramAccountId: 'ig-demo-creator',
-    instagramMediaId: '18029348123984716',
-    mediaType: 'VIDEO',
-    caption: 'Stop manually replying to "link please" in your comments! Set this up once and watch leads flow 24/7. Comment "FLOW" to test it right now! 🤖',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80',
-    permalink: 'https://instagram.com/p/C3demoReel6',
-    timestamp: new Date(Date.now() - 3600 * 1000 * 120).toISOString(),
-    likeCount: 4120,
-    commentsCount: 1240,
-  },
-];
-
 const localStore: LocalStore = {
   processedEvents: new Set<string>(),
   accounts: [],
-  media: [...DEFAULT_DEMO_MEDIA],
+  media: [],
   automations: [],
   events: [],
 };
@@ -489,7 +414,7 @@ export async function getMedia(accountId?: string) {
     }
   }
 
-  return localStore.media && localStore.media.length > 0 ? localStore.media : DEFAULT_DEMO_MEDIA;
+  return localStore.media || [];
 }
 
 /**
