@@ -298,14 +298,21 @@ export async function deleteAutomation(id: string): Promise<boolean> {
 export async function getConnectedAccount(userId = 'user-default') {
   if (isSupabaseConfigured()) {
     try {
+      // Query without user_id filter first (MVP single-user: user_id may be null)
       const { data, error } = await supabaseAdmin
         .from('instagram_accounts')
         .select('*')
-        .eq('user_id', userId)
         .eq('status', 'CONNECTED')
         .maybeSingle();
 
       if (!error && data) {
+        let accessToken = '';
+        try {
+          accessToken = decryptToken(data.access_token_encrypted);
+        } catch {
+          // Graceful degradation: return plaintext if decryption fails (e.g. re-keyed)
+          accessToken = data.access_token_encrypted || '';
+        }
         return {
           id: data.id,
           userId: data.user_id,
@@ -313,7 +320,7 @@ export async function getConnectedAccount(userId = 'user-default') {
           username: data.username,
           profilePictureUrl: data.profile_picture_url,
           accountType: data.account_type,
-          accessToken: decryptToken(data.access_token_encrypted),
+          accessToken,
           status: data.status,
           createdAt: data.created_at,
         };
@@ -325,10 +332,48 @@ export async function getConnectedAccount(userId = 'user-default') {
 
   const acc = localStore.accounts[0];
   if (!acc) return null;
-  return {
-    ...acc,
-    accessToken: decryptToken(acc.accessTokenEncrypted),
-  };
+  let accessToken = '';
+  try {
+    accessToken = decryptToken(acc.accessTokenEncrypted || '');
+  } catch {
+    accessToken = acc.accessToken || acc.accessTokenEncrypted || '';
+  }
+  return { ...acc, accessToken };
+}
+
+/**
+ * Saves a newly connected Instagram account to local in-memory store.
+ * Used by the OAuth callback when Supabase is not configured.
+ */
+export function saveConnectedAccountLocally(account: {
+  id: string;
+  instagramUserId: string;
+  username: string;
+  profilePictureUrl?: string;
+  accountType?: string;
+  accessTokenEncrypted: string;
+  accessToken: string;
+}) {
+  // Replace any existing account (single-user MVP)
+  localStore.accounts = [{
+    id: account.id,
+    userId: 'user-default',
+    instagramUserId: account.instagramUserId,
+    username: account.username,
+    profilePictureUrl: account.profilePictureUrl || '',
+    accountType: account.accountType || 'CREATOR',
+    accessTokenEncrypted: account.accessTokenEncrypted,
+    accessToken: account.accessToken,
+    status: 'CONNECTED',
+    createdAt: new Date().toISOString(),
+  }];
+}
+
+/**
+ * Clears the local in-memory account store on disconnect.
+ */
+export function clearConnectedAccountLocally() {
+  localStore.accounts = [];
 }
 
 /**

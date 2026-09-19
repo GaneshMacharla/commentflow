@@ -67,47 +67,98 @@ export async function getLongLivedToken(shortToken: string): Promise<MetaTokenRe
 
 /**
  * Fetches the connected Instagram Professional account linked to the user's Facebook Page.
+ * Falls back to querying /me directly for Creator accounts without a linked Page.
  */
 export async function getInstagramAccountInfo(accessToken: string): Promise<InstagramAccountInfo | null> {
-  // Step 1: Query Facebook pages the user manages
-  interface PagesResponse {
-    data: {
+  // Step 1: Try via Facebook Pages (Business accounts)
+  try {
+    interface PagesResponse {
+      data: {
+        id: string;
+        name: string;
+        instagram_business_account?: {
+          id: string;
+        };
+      }[];
+    }
+
+    const pages = await graphApiFetch<PagesResponse>(
+      `/me/accounts?fields=id,name,instagram_business_account&access_token=${accessToken}`
+    );
+
+    const pageWithIg = pages.data?.find((p) => p.instagram_business_account?.id);
+    if (pageWithIg?.instagram_business_account?.id) {
+      const igAccountId = pageWithIg.instagram_business_account.id;
+
+      interface IgProfileResponse {
+        id: string;
+        username: string;
+        name?: string;
+        profile_picture_url?: string;
+      }
+
+      const profile = await graphApiFetch<IgProfileResponse>(
+        `/${igAccountId}?fields=id,username,name,profile_picture_url&access_token=${accessToken}`
+      );
+
+      return {
+        id: profile.id,
+        username: profile.username,
+        name: profile.name,
+        profile_picture_url: profile.profile_picture_url,
+        account_type: 'BUSINESS',
+      };
+    }
+  } catch (err) {
+    console.warn('getInstagramAccountInfo: /me/accounts lookup failed, trying /me fallback:', err);
+  }
+
+  // Step 2: Fallback for Creator accounts — query the user directly
+  // Creator accounts link their IG account at the user level, not the Page level.
+  try {
+    interface MeIgResponse {
       id: string;
-      name: string;
+      username?: string;
+      name?: string;
+      profile_picture_url?: string;
       instagram_business_account?: {
         id: string;
+        username: string;
+        name?: string;
+        profile_picture_url?: string;
       };
-    }[];
+    }
+
+    // First try to get the IG account directly linked to the user
+    const me = await graphApiFetch<MeIgResponse>(
+      `/me?fields=id,name,username,profile_picture_url,instagram_business_account{id,username,name,profile_picture_url}&access_token=${accessToken}`
+    );
+
+    if (me.instagram_business_account?.id) {
+      const ig = me.instagram_business_account;
+      return {
+        id: ig.id,
+        username: ig.username,
+        name: ig.name,
+        profile_picture_url: ig.profile_picture_url,
+        account_type: 'CREATOR',
+      };
+    }
+
+    // Last resort: use the Facebook user's profile (some Creator setups)
+    if (me.username) {
+      return {
+        id: me.id,
+        username: me.username,
+        name: me.name,
+        profile_picture_url: me.profile_picture_url,
+        account_type: 'CREATOR',
+      };
+    }
+  } catch (err) {
+    console.error('getInstagramAccountInfo: /me fallback also failed:', err);
   }
 
-  const pages = await graphApiFetch<PagesResponse>(
-    `/me/accounts?fields=id,name,instagram_business_account&access_token=${accessToken}`
-  );
-
-  const pageWithIg = pages.data?.find((p) => p.instagram_business_account?.id);
-  if (!pageWithIg?.instagram_business_account?.id) {
-    return null;
-  }
-
-  const igAccountId = pageWithIg.instagram_business_account.id;
-
-  // Step 2: Fetch detailed Instagram profile
-  interface IgProfileResponse {
-    id: string;
-    username: string;
-    name?: string;
-    profile_picture_url?: string;
-  }
-
-  const profile = await graphApiFetch<IgProfileResponse>(
-    `/${igAccountId}?fields=id,username,name,profile_picture_url&access_token=${accessToken}`
-  );
-
-  return {
-    id: profile.id,
-    username: profile.username,
-    name: profile.name,
-    profile_picture_url: profile.profile_picture_url,
-    account_type: 'CREATOR',
-  };
+  return null;
 }
+

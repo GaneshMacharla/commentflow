@@ -55,7 +55,7 @@ export async function processCommentEvent(
   );
 
   const activeAutomations = allAutomations.filter(
-    (auto) =>
+    (auto: import('./types').Automation) =>
       auto.status === 'ACTIVE' &&
       (!auto.mediaId || candidateMediaIds.has(auto.mediaId))
   );
@@ -74,7 +74,7 @@ export async function processCommentEvent(
   let matchInfo = null;
 
   for (const auto of activeAutomations) {
-    const keywords = auto.triggers.map((t) => t.keyword);
+    const keywords = auto.triggers.map((t: import('./types').Trigger) => t.keyword);
     const result = matchComment(
       event.commentText,
       keywords,
