@@ -6,21 +6,36 @@ export async function GET() {
   try {
     const account = await getConnectedAccount();
     if (!account) {
-      return NextResponse.json({ media: [] });
+      // Return connected:false so the client can show "Connect Instagram" CTA
+      return NextResponse.json({ connected: false, media: [] });
     }
 
-    // If live Instagram access token exists and not mock, sync fresh media
+    // If a real Instagram access token exists (not mock), sync fresh media from Graph API
     if (account.accessToken && !account.accessToken.startsWith('mock_')) {
       try {
         const liveMedia = await fetchInstagramMedia(account.instagramUserId, account.accessToken);
-        return NextResponse.json({ media: liveMedia });
+        return NextResponse.json({
+          connected: true,
+          account: {
+            username: account.username,
+            profilePictureUrl: account.profilePictureUrl,
+          },
+          media: liveMedia,
+        });
       } catch (graphErr) {
         console.warn('Could not sync live media from Graph API, serving stored media:', graphErr);
       }
     }
 
     const storedMedia = await getMedia(account.id);
-    return NextResponse.json({ media: storedMedia });
+    return NextResponse.json({
+      connected: true,
+      account: {
+        username: account.username,
+        profilePictureUrl: account.profilePictureUrl,
+      },
+      media: storedMedia,
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
