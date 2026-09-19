@@ -63,11 +63,11 @@ function InstagramConnectPageInner() {
     fetchAccount();
   }, []);
 
-  const handleConnectMeta = async () => {
+  const handleConnectMeta = async (provider: 'instagram' | 'facebook' = 'instagram') => {
     setIsConnecting(true);
     setErrorBanner(null);
     try {
-      const res = await fetch('/api/instagram/connect');
+      const res = await fetch(`/api/instagram/connect?provider=${provider}`);
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
@@ -75,7 +75,7 @@ function InstagramConnectPageInner() {
         throw new Error(data.error || 'Could not get OAuth URL');
       }
     } catch (err: any) {
-      setErrorBanner(err.message || 'Failed to initialize Meta OAuth. Please try again.');
+      setErrorBanner(err.message || 'Failed to initialize OAuth. Please try again.');
       setIsConnecting(false);
     }
   };
@@ -366,24 +366,24 @@ function InstagramConnectPageInner() {
           <div className="max-w-md mx-auto space-y-3 pt-2">
             {/* 1. Continue with Instagram Button (Instagram Gradient) */}
             <button
-              onClick={handleConnectMeta}
+              onClick={() => handleConnectMeta('instagram')}
               disabled={isConnecting}
               className="w-full flex items-center justify-center gap-3 py-3.5 px-6 rounded-2xl font-bold text-sm bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#FCB045] text-white shadow-xl shadow-pink-500/20 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-60"
             >
               <InstagramIcon className="w-5 h-5 text-white shrink-0" />
-              <span>{isConnecting ? 'Opening Meta Authorization…' : 'Continue with Instagram'}</span>
+              <span>{isConnecting ? 'Opening Instagram Login…' : 'Continue with Instagram'}</span>
             </button>
 
             {/* 2. Continue with Facebook Button */}
             <button
-              onClick={handleConnectMeta}
+              onClick={() => handleConnectMeta('facebook')}
               disabled={isConnecting}
               className="w-full flex items-center justify-center gap-3 py-3.5 px-6 rounded-2xl font-bold text-sm bg-[#1877F2] hover:bg-[#166fe5] text-white shadow-xl shadow-blue-500/20 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-60"
             >
               <svg className="w-5 h-5 fill-current shrink-0" viewBox="0 0 24 24">
                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
               </svg>
-              <span>Continue with Facebook</span>
+              <span>{isConnecting ? 'Opening Facebook Login…' : 'Continue with Facebook'}</span>
             </button>
 
             {/* Divider */}

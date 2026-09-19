@@ -36,14 +36,15 @@ export async function GET(request: NextRequest) {
     }
 
     const redirectUri = `${origin}/api/instagram/callback`;
+    const savedProvider = (request.cookies.get('oauth_provider')?.value as any) || 'facebook';
 
     // ── Step 1: Exchange authorization code → short-lived token ──────────────
-    const tokenData = await exchangeCodeForToken(code, redirectUri);
+    const tokenData = await exchangeCodeForToken(code, redirectUri, savedProvider);
 
     // ── Step 2: Exchange short-lived → 60-day long-lived token ───────────────
     let finalToken = tokenData.access_token;
     try {
-      const longLived = await getLongLivedToken(tokenData.access_token);
+      const longLived = await getLongLivedToken(tokenData.access_token, savedProvider);
       if (longLived.access_token) {
         finalToken = longLived.access_token;
       }
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ── Step 3: Fetch Instagram account info ─────────────────────────────────
-    const accountInfo = await getInstagramAccountInfo(finalToken);
+    const accountInfo = await getInstagramAccountInfo(finalToken, savedProvider);
     if (!accountInfo) {
       return NextResponse.redirect(
         new URL(
@@ -119,6 +120,7 @@ export async function GET(request: NextRequest) {
       new URL(`/instagram?connected=true&username=${encodeURIComponent(accountInfo.username)}`, origin)
     );
     successResponse.cookies.delete('oauth_state');
+    successResponse.cookies.delete('oauth_provider');
     return successResponse;
   } catch (err: any) {
     console.error('OAuth callback error:', err);
