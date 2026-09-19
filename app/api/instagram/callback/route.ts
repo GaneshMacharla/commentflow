@@ -71,17 +71,31 @@ export async function GET(request: NextRequest) {
       ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
       : null;
 
-    // ── Step 5a: Persist to Supabase ─────────────────────────────────────────
+    // ── Step 5: Persist Account (Local Cache + Supabase) ────────────────────
+    const sanitizedAccountType =
+      accountInfo.account_type?.toUpperCase() === 'BUSINESS' ? 'BUSINESS' : 'CREATOR';
+
+    // Always populate in-memory store immediately
+    saveConnectedAccountLocally({
+      id: accountId,
+      instagramUserId: accountInfo.id,
+      username: accountInfo.username,
+      profilePictureUrl: accountInfo.profile_picture_url,
+      accountType: sanitizedAccountType,
+      accessTokenEncrypted: encryptedToken,
+      accessToken: finalToken,
+    });
+
+    // Persist to Supabase
     if (isSupabaseConfigured()) {
       try {
-        await supabaseAdmin.from('instagram_accounts').upsert(
+        const { error: upsertErr } = await supabaseAdmin.from('instagram_accounts').upsert(
           {
-            // user_id is intentionally NULL in MVP single-user mode (FK made nullable by migration)
             user_id: null,
             instagram_user_id: accountInfo.id,
             username: accountInfo.username,
             profile_picture_url: accountInfo.profile_picture_url || null,
-            account_type: accountInfo.account_type || 'CREATOR',
+            account_type: sanitizedAccountType,
             access_token_encrypted: encryptedToken,
             token_expires_at: tokenExpiresAt,
             status: 'CONNECTED',
@@ -89,30 +103,12 @@ export async function GET(request: NextRequest) {
           },
           { onConflict: 'instagram_user_id' }
         );
+        if (upsertErr) {
+          console.error('Supabase upsert error:', upsertErr);
+        }
       } catch (dbErr) {
-        console.error('Failed to save account to Supabase, falling back to local store:', dbErr);
-        // Fall through to local store below
-        saveConnectedAccountLocally({
-          id: accountId,
-          instagramUserId: accountInfo.id,
-          username: accountInfo.username,
-          profilePictureUrl: accountInfo.profile_picture_url,
-          accountType: accountInfo.account_type,
-          accessTokenEncrypted: encryptedToken,
-          accessToken: finalToken,
-        });
+        console.error('Failed to save account to Supabase:', dbErr);
       }
-    } else {
-      // ── Step 5b: Local in-memory fallback (no Supabase configured) ───────────
-      saveConnectedAccountLocally({
-        id: accountId,
-        instagramUserId: accountInfo.id,
-        username: accountInfo.username,
-        profilePictureUrl: accountInfo.profile_picture_url,
-        accountType: accountInfo.account_type,
-        accessTokenEncrypted: encryptedToken,
-        accessToken: finalToken,
-      });
     }
 
     // ── Step 6: Redirect to success ───────────────────────────────────────────

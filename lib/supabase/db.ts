@@ -311,26 +311,28 @@ export async function getConnectedAccount(userId = 'user-default') {
         .from('instagram_accounts')
         .select('*')
         .eq('status', 'CONNECTED')
-        .maybeSingle();
+        .order('updated_at', { ascending: false })
+        .limit(1);
 
-      if (!error && data) {
+      const accountRow = data?.[0];
+      if (!error && accountRow) {
         let accessToken = '';
         try {
-          accessToken = decryptToken(data.access_token_encrypted);
+          accessToken = decryptToken(accountRow.access_token_encrypted);
         } catch {
           // Graceful degradation: return plaintext if decryption fails (e.g. re-keyed)
-          accessToken = data.access_token_encrypted || '';
+          accessToken = accountRow.access_token_encrypted || '';
         }
         return {
-          id: data.id,
-          userId: data.user_id,
-          instagramUserId: data.instagram_user_id,
-          username: data.username,
-          profilePictureUrl: data.profile_picture_url,
-          accountType: data.account_type,
+          id: accountRow.id,
+          userId: accountRow.user_id,
+          instagramUserId: accountRow.instagram_user_id,
+          username: accountRow.username,
+          profilePictureUrl: accountRow.profile_picture_url,
+          accountType: accountRow.account_type,
           accessToken,
-          status: data.status,
-          createdAt: data.created_at,
+          status: accountRow.status,
+          createdAt: accountRow.created_at,
         };
       }
     } catch (err) {

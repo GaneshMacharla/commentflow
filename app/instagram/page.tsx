@@ -27,27 +27,34 @@ import InstagramIcon from '@/components/InstagramIcon';
 function InstagramConnectPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [account, setAccount] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const connectedParam = searchParams.get('connected');
+  const errorParam = searchParams.get('error');
+  const usernameParam = searchParams.get('username');
+
+  const [account, setAccount] = useState<any>(
+    connectedParam === 'true' && usernameParam
+      ? { username: usernameParam, accountType: 'CREATOR', status: 'CONNECTED' }
+      : null
+  );
+  const [isLoading, setIsLoading] = useState(connectedParam === 'true' ? false : true);
   const [isConnecting, setIsConnecting] = useState(false);
   const [activeAccordion, setActiveAccordion] = useState<number | null>(null);
 
   // Banners from OAuth callback redirect
-  const connectedParam = searchParams.get('connected');
-  const errorParam = searchParams.get('error');
-  const usernameParam = searchParams.get('username');
   const [successBanner, setSuccessBanner] = useState(connectedParam === 'true');
   const [errorBanner, setErrorBanner] = useState<string | null>(
     errorParam ? decodeURIComponent(errorParam) : null
   );
 
   const fetchAccount = async () => {
-    setIsLoading(true);
     try {
       const res = await fetch('/api/instagram/account');
       const data = await res.json();
       if (data.connected && data.account) {
         setAccount(data.account);
+      } else if (connectedParam === 'true' && usernameParam) {
+        // Keep optimistic connected state from successful OAuth callback
+        setAccount((prev: any) => prev || { username: usernameParam, accountType: 'CREATOR', status: 'CONNECTED' });
       } else {
         setAccount(null);
       }
