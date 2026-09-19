@@ -63,19 +63,19 @@ function InstagramConnectPageInner() {
     fetchAccount();
   }, []);
 
-  const handleConnectMeta = async (provider: 'instagram' | 'facebook' = 'instagram') => {
+  const handleConnectInstagram = async () => {
     setIsConnecting(true);
     setErrorBanner(null);
     try {
-      const res = await fetch(`/api/instagram/connect?provider=${provider}`);
+      const res = await fetch('/api/instagram/connect');
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
       } else {
-        throw new Error(data.error || 'Could not get OAuth URL');
+        throw new Error(data.error || 'Could not get Instagram OAuth URL');
       }
     } catch (err: any) {
-      setErrorBanner(err.message || 'Failed to initialize OAuth. Please try again.');
+      setErrorBanner(err.message || 'Failed to initialize Instagram Login. Please try again.');
       setIsConnecting(false);
     }
   };
@@ -113,22 +113,15 @@ function InstagramConnectPageInner() {
   const requirements = [
     {
       title: 'Instagram Professional Account',
-      subtitle: 'Creator or Business account required by Meta Graph API',
-      badge: 'Step 1',
+      subtitle: 'Creator or Business account required for comment & DM automation',
+      badge: 'Requirement 1',
       details:
-        'Personal accounts cannot use the official Meta API. To switch for free: Open Instagram app → Go to Profile → Edit Profile → Scroll down and tap "Switch to Professional Account" → Choose Creator or Business.',
-    },
-    {
-      title: 'Connected Facebook Business Page',
-      subtitle: 'Official bridge required by Meta OAuth for permissions',
-      badge: 'Step 2',
-      details:
-        'Meta requires your Instagram account to be linked with a Facebook Page. In Instagram: Settings → Accounts Center → Connected Experiences, or in Facebook Page Settings → Linked Accounts → Instagram.',
+        'To switch for free in 15 seconds: Open Instagram app → Go to Profile → Edit Profile → Scroll down and tap "Switch to Professional Account" → Choose Creator or Business.',
     },
     {
       title: 'Allow Access to Messages Enabled',
-      subtitle: 'Enables ReplyKaro to send automated DMs when comments match',
-      badge: 'Step 3',
+      subtitle: 'Enables ReplyKaro to send automated DMs when comments match keywords',
+      badge: 'Requirement 2',
       details:
         'In your Instagram mobile app: Go to Settings and privacy → Messages and story replies → Message controls → Scroll to Connected tools → Turn ON "Allow Access to Messages".',
     },
@@ -139,15 +132,15 @@ function InstagramConnectPageInner() {
       {/* Top Breadcrumb / Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-[11px] font-semibold uppercase tracking-wider mb-2">
-            <Zap className="w-3 h-3 text-purple-400" />
-            ReplyKaro Creator Gateway
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-gradient-to-r from-purple-500/15 to-pink-500/15 border border-purple-500/25 text-purple-300 text-[11px] font-semibold uppercase tracking-wider mb-2">
+            <InstagramIcon className="w-3.5 h-3.5 text-pink-400" />
+            Instagram Business Login
           </div>
           <h1 className="text-3xl font-extrabold text-white tracking-tight">
-            Instagram Account Connection
+            Connect Instagram Account
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Connect your Instagram Professional or Creator account via the official Meta Graph API.
+            Authenticate directly with your Instagram account to enable instant Comment-to-DM flows.
           </p>
         </div>
 
@@ -262,7 +255,7 @@ function InstagramConnectPageInner() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 mt-1">
-                  Connected via official Meta Graph API · Account ID: <code className="text-slate-300">{account.instagramUserId || '17841400293847192'}</code>
+                  Connected via Instagram Business Login · Account ID: <code className="text-slate-300">{account.instagramUserId || '17841400293847192'}</code>
                 </p>
               </div>
             </div>
@@ -308,10 +301,10 @@ function InstagramConnectPageInner() {
 
             <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5">
               <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
-                Meta Status
+                API Protocol
               </div>
-              <div className="text-lg font-bold text-purple-300 mt-1">Verified</div>
-              <div className="text-[10px] text-slate-500 mt-0.5">Official Graph API</div>
+              <div className="text-lg font-bold text-pink-400 mt-1">Instagram Graph</div>
+              <div className="text-[10px] text-slate-500 mt-0.5">Direct API v21.0</div>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5">
@@ -343,47 +336,35 @@ function InstagramConnectPageInner() {
           </div>
         </div>
       ) : (
-        /* ── NOT CONNECTED: REPLYKARO CREATOR GATEWAY ── */
+        /* ── NOT CONNECTED: PURE INSTAGRAM GATEWAY ── */
         <div className="p-8 sm:p-10 rounded-3xl glass-card border border-white/10 relative overflow-hidden shadow-2xl space-y-8">
           <div className="absolute -top-32 -left-32 w-80 h-80 bg-gradient-to-br from-pink-600/15 via-purple-600/15 to-transparent rounded-full blur-3xl pointer-events-none" />
 
           {/* Hero Header */}
           <div className="text-center max-w-xl mx-auto space-y-3">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 text-purple-300 text-xs font-semibold shadow-inner">
-              <Sparkles className="w-3.5 h-3.5 text-pink-400" />
+              <InstagramIcon className="w-3.5 h-3.5 text-pink-400" />
               CREATOR GATEWAY
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               Ready to scale at Warp Speed?
             </h2>
             <p className="text-sm text-slate-400 leading-relaxed">
-              Connect your Instagram Professional or Creator account. CommentFlow automatically monitors
-              comments on your Reels and delivers custom DMs in under 1 second.
+              Sign in with your Instagram Business or Creator account to unlock instant Comment-to-DM automations.
             </p>
           </div>
 
-          {/* Action Connection Buttons */}
+          {/* Action Connection Buttons (100% Pure Instagram) */}
           <div className="max-w-md mx-auto space-y-3 pt-2">
-            {/* 1. Continue with Instagram Button (Instagram Gradient) */}
+            {/* Primary Instagram Button */}
             <button
-              onClick={() => handleConnectMeta('instagram')}
+              id="connect-instagram-btn"
+              onClick={handleConnectInstagram}
               disabled={isConnecting}
-              className="w-full flex items-center justify-center gap-3 py-3.5 px-6 rounded-2xl font-bold text-sm bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#FCB045] text-white shadow-xl shadow-pink-500/20 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-60"
+              className="w-full flex items-center justify-center gap-3 py-4 px-6 rounded-2xl font-bold text-base bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#FCB045] text-white shadow-xl shadow-pink-500/25 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-60 cursor-pointer"
             >
               <InstagramIcon className="w-5 h-5 text-white shrink-0" />
-              <span>{isConnecting ? 'Opening Instagram Login…' : 'Continue with Instagram'}</span>
-            </button>
-
-            {/* 2. Continue with Facebook Button */}
-            <button
-              onClick={() => handleConnectMeta('facebook')}
-              disabled={isConnecting}
-              className="w-full flex items-center justify-center gap-3 py-3.5 px-6 rounded-2xl font-bold text-sm bg-[#1877F2] hover:bg-[#166fe5] text-white shadow-xl shadow-blue-500/20 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-60"
-            >
-              <svg className="w-5 h-5 fill-current shrink-0" viewBox="0 0 24 24">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-              </svg>
-              <span>{isConnecting ? 'Opening Facebook Login…' : 'Continue with Facebook'}</span>
+              <span>{isConnecting ? 'Opening Instagram Authorization…' : 'Continue with Instagram'}</span>
             </button>
 
             {/* Divider */}
@@ -395,7 +376,7 @@ function InstagramConnectPageInner() {
               <div className="flex-grow border-t border-white/10"></div>
             </div>
 
-            {/* 3. Demo Account Button */}
+            {/* Instant Demo Account Button */}
             <button
               onClick={handleConnectDemo}
               disabled={isDemoConnecting}
@@ -407,7 +388,7 @@ function InstagramConnectPageInner() {
               </span>
             </button>
             <p className="text-[11px] text-center text-slate-500">
-              Instant access with 6 sample Reels & Posts. No Meta login required.
+              Instant access with 6 sample Reels & Posts. No Instagram login required.
             </p>
           </div>
 
@@ -415,7 +396,7 @@ function InstagramConnectPageInner() {
           <div className="flex flex-wrap items-center justify-center gap-6 pt-4 border-t border-white/10 text-xs text-slate-400">
             <div className="flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Official Meta Graph API</span>
+              <span>Official Instagram API</span>
             </div>
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-purple-400" />
@@ -429,7 +410,7 @@ function InstagramConnectPageInner() {
         </div>
       )}
 
-      {/* ── PRE-FLIGHT REQUIREMENTS CHECKLIST (ReplyKaro Guide) ───────────── */}
+      {/* ── PRE-FLIGHT REQUIREMENTS CHECKLIST ─────────────────────────────── */}
       <div className="p-8 rounded-3xl glass-card border border-white/10 space-y-6">
         <div>
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -437,7 +418,7 @@ function InstagramConnectPageInner() {
             Requirement Checklist for Instagram Automation
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Meta requires 3 quick settings on your Instagram profile to allow automated comment replies & DMs.
+            Ensure your Instagram account has these 2 standard creator settings enabled:
           </p>
         </div>
 
@@ -478,51 +459,36 @@ function InstagramConnectPageInner() {
         </div>
       </div>
 
-      {/* ── TECHNICAL CONFIGURATION GUIDE (Meta App Setup) ────────────────── */}
-      <div className="p-6 rounded-3xl glass-card border border-white/10 space-y-4 text-xs">
-        <h3 className="text-sm font-bold text-white flex items-center gap-2">
-          <Zap className="w-4 h-4 text-amber-400" />
-          Meta App Webhook & Permissions Guide
-        </h3>
-        <p className="text-slate-400">
-          If you are using your own Meta Developer App (App ID: <code className="text-slate-300">949299624259140</code>), ensure your Webhook and OAuth Redirect URIs are configured:
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 font-mono text-[11px]">
-          <div className="p-3.5 rounded-xl bg-black/40 border border-white/5 space-y-1">
-            <span className="text-slate-500 text-[10px] block uppercase font-sans font-bold">
-              Valid OAuth Redirect URI
-            </span>
-            <span className="text-purple-300 break-all select-all">
-              {typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}
-              /api/instagram/callback
-            </span>
-          </div>
-
-          <div className="p-3.5 rounded-xl bg-black/40 border border-white/5 space-y-1">
-            <span className="text-slate-500 text-[10px] block uppercase font-sans font-bold">
-              Webhook Callback URL
-            </span>
-            <span className="text-pink-300 break-all select-all">
-              {typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.vercel.app'}
-              /api/webhooks/instagram
-            </span>
-          </div>
+      {/* ── ACTIVE INSTAGRAM PERMISSIONS ──────────────────────────────────── */}
+      <div className="p-8 rounded-3xl glass-card border border-white/10 space-y-4">
+        <div>
+          <h3 className="text-sm font-bold text-white flex items-center gap-2">
+            <InstagramIcon className="w-4 h-4 text-pink-400" />
+            Requested Instagram Permissions
+          </h3>
+          <p className="text-xs text-slate-400 mt-1">
+            During authorization, Instagram will display these 3 standard permissions:
+          </p>
         </div>
 
-        <div className="flex items-center justify-between pt-2">
-          <span className="text-slate-500 text-[11px]">
-            Verify Token: <code className="text-amber-300">commentflow_meta_verify_token_2026</code> · Subscriptions: <code className="text-emerald-300">comments</code>
-          </span>
-          <a
-            href="https://developers.facebook.com"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 text-purple-400 hover:text-purple-300 transition-colors"
-          >
-            Meta Developer Portal
-            <ExternalLink className="w-3 h-3" />
-          </a>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+          <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
+            <span className="text-xs font-bold text-white block">1. View profile & media</span>
+            <span className="text-[11px] text-slate-400 block font-mono">instagram_business_basic</span>
+            <span className="text-[11px] text-slate-500 block">Required to list your Reels and Posts</span>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
+            <span className="text-xs font-bold text-white block">2. Manage comments</span>
+            <span className="text-[11px] text-slate-400 block font-mono">instagram_business_manage_comments</span>
+            <span className="text-[11px] text-slate-500 block">Required to read comments & post public replies</span>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
+            <span className="text-xs font-bold text-white block">3. Manage messages</span>
+            <span className="text-[11px] text-slate-400 block font-mono">instagram_business_manage_messages</span>
+            <span className="text-[11px] text-slate-500 block">Required to dispatch automated DMs with link cards</span>
+          </div>
         </div>
       </div>
     </div>

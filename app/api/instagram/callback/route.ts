@@ -36,15 +36,14 @@ export async function GET(request: NextRequest) {
     }
 
     const redirectUri = `${origin}/api/instagram/callback`;
-    const savedProvider = (request.cookies.get('oauth_provider')?.value as any) || 'facebook';
 
     // ── Step 1: Exchange authorization code → short-lived token ──────────────
-    const tokenData = await exchangeCodeForToken(code, redirectUri, savedProvider);
+    const tokenData = await exchangeCodeForToken(code, redirectUri);
 
     // ── Step 2: Exchange short-lived → 60-day long-lived token ───────────────
     let finalToken = tokenData.access_token;
     try {
-      const longLived = await getLongLivedToken(tokenData.access_token, savedProvider);
+      const longLived = await getLongLivedToken(tokenData.access_token);
       if (longLived.access_token) {
         finalToken = longLived.access_token;
       }
@@ -53,12 +52,12 @@ export async function GET(request: NextRequest) {
       console.warn('Could not exchange for long-lived token, using short-lived:', llErr);
     }
 
-    // ── Step 3: Fetch Instagram account info ─────────────────────────────────
-    const accountInfo = await getInstagramAccountInfo(finalToken, savedProvider);
+    // ── Step 3: Fetch Instagram account info directly via Instagram Graph ─────
+    const accountInfo = await getInstagramAccountInfo(finalToken);
     if (!accountInfo) {
       return NextResponse.redirect(
         new URL(
-          '/instagram?error=No+Instagram+Professional+account+found.+Make+sure+your+Instagram+account+is+linked+to+a+Facebook+Page+or+is+a+Creator+account.',
+          '/instagram?error=Could+not+retrieve+Instagram+account+details.+Please+ensure+you+granted+all+requested+permissions.',
           origin
         )
       );
