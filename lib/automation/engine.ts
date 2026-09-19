@@ -105,11 +105,13 @@ export async function processCommentEvent(
     };
   }
 
-  // 4. Resolve Credentials
+  // 4. Resolve Credentials dynamically
   let accessToken: string | undefined;
+  let accountUsername: string | undefined;
   if (!isSimulation) {
-    const account = await getConnectedAccount();
+    const account = await getConnectedAccount(event.instagramAccountId);
     accessToken = account?.accessToken;
+    accountUsername = account?.username;
   }
 
   // 5. Execute Configured Actions
@@ -121,6 +123,8 @@ export async function processCommentEvent(
       isSimulation,
       accessToken,
       permalink: event.permalink,
+      accountUsername,
+      instagramAccountId: event.instagramAccountId,
     });
 
     actionResults.push(res);

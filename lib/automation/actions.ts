@@ -7,6 +7,8 @@ export interface ActionDispatcherOptions {
   isSimulation?: boolean;
   accessToken?: string;
   permalink?: string;
+  accountUsername?: string;
+  instagramAccountId?: string;
 }
 
 /**
@@ -52,11 +54,26 @@ export async function executeAction(
     if (action.actionType === 'PUBLIC_REPLY') {
       await postCommentReply(event.commentId, formattedMessage, options.accessToken);
     } else if (action.actionType === 'PRIVATE_MESSAGE') {
+      // If commenter is the account owner themselves, Instagram API does not permit sending a DM to yourself
+      if (
+        options.accountUsername &&
+        event.commenterUsername.toLowerCase() === options.accountUsername.toLowerCase()
+      ) {
+        console.warn('Comment is from account owner. Instagram API does not permit sending private DMs to yourself.');
+        return {
+          type: action.actionType,
+          message: formattedMessage,
+          success: true,
+          error: 'Instagram API does not permit sending private DMs to your own account. Test from another account to receive the DM.',
+        };
+      }
+
       await sendInstagramDirectMessage(
         event.commentId,
         event.commenterId,
         formattedMessage,
-        options.accessToken
+        options.accessToken,
+        options.instagramAccountId
       );
     }
 

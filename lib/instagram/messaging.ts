@@ -14,9 +14,12 @@ export async function sendInstagramDirectMessage(
   commentId: string,
   recipientId: string | null,
   messageText: string,
-  accessToken: string
+  accessToken: string,
+  instagramAccountId?: string
 ): Promise<SendMessageResponse> {
-  const endpoint = `/me/messages?access_token=${accessToken}`;
+  const endpoint = instagramAccountId
+    ? `/${instagramAccountId}/messages?access_token=${accessToken}`
+    : `/me/messages?access_token=${accessToken}`;
 
   // Meta Private Replies allows targeting directly by comment_id
   const recipient = commentId

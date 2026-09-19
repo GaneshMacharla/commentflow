@@ -433,14 +433,23 @@ export async function deleteAutomation(id: string): Promise<boolean> {
 /**
  * Retrieves the connected Instagram account.
  */
-export async function getConnectedAccount(userId = 'user-default') {
+export async function getConnectedAccount(identifier?: string) {
   if (isSupabaseConfigured()) {
     try {
-      // Query without user_id filter first (MVP single-user: user_id may be null)
-      const { data, error } = await supabaseAdmin
+      let query = supabaseAdmin
         .from('instagram_accounts')
         .select('*')
-        .eq('status', 'CONNECTED')
+        .eq('status', 'CONNECTED');
+
+      if (identifier && identifier !== 'user-default') {
+        if (isValidUuid(identifier)) {
+          query = query.eq('id', identifier);
+        } else {
+          query = query.eq('instagram_user_id', identifier);
+        }
+      }
+
+      const { data, error } = await query
         .order('updated_at', { ascending: false })
         .limit(1);
 
