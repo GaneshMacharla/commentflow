@@ -9,7 +9,8 @@ export async function GET(request: NextRequest) {
 
   try {
     const searchParams = request.nextUrl.searchParams;
-    const code = searchParams.get('code');
+    const rawCode = searchParams.get('code');
+    const code = rawCode ? rawCode.split('#_')[0] : null;
     const state = searchParams.get('state');
     const error = searchParams.get('error');
     const errorDescription = searchParams.get('error_description');
