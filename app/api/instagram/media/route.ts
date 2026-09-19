@@ -10,8 +10,8 @@ export async function GET() {
       return NextResponse.json({ connected: false, media: [] });
     }
 
-    // If a real Instagram access token exists (not mock), sync fresh media from Graph API
-    if (account.accessToken && !account.accessToken.startsWith('mock_')) {
+    // If a real Instagram access token exists (not mock or demo), sync fresh media from Graph API
+    if (account.accessToken && !account.accessToken.startsWith('mock_') && !account.accessToken.startsWith('demo_')) {
       try {
         const liveMedia = await fetchInstagramMedia(account.instagramUserId, account.accessToken);
         return NextResponse.json({

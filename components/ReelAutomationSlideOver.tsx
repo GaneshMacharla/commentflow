@@ -345,6 +345,24 @@ export default function ReelAutomationSlideOver({
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
+
+                {/* Suggested keyword chips */}
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {['LINK', 'PRICE', 'COURSE', 'FREE', 'BHEJO', 'INFO', 'ACCESS'].map((sug) => (
+                    <button
+                      key={sug}
+                      type="button"
+                      onClick={() => {
+                        if (!keywords.includes(sug)) {
+                          setKeywords((prev) => [...prev, sug]);
+                        }
+                      }}
+                      className="px-2.5 py-0.5 rounded-lg text-[10px] font-semibold bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10"
+                    >
+                      + {sug}
+                    </button>
+                  ))}
+                </div>
                 {keywords.length > 0 ? (
                   <div className="flex flex-wrap gap-2 mt-2.5">
                     {keywords.map((kw) => (

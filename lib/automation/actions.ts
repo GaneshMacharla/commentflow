@@ -18,7 +18,21 @@ export async function executeAction(
   event: NormalizedCommentEvent,
   options: ActionDispatcherOptions = {}
 ): Promise<ActionExecutionResult> {
-  const formattedMessage = interpolateVariables(action.message, {
+  // If the action message contains multiple variations (separated by ||| or newline separator ---), randomly pick one
+  let rawMessage = action.message;
+  if (rawMessage.includes('|||')) {
+    const variations = rawMessage.split('|||').map((v) => v.trim()).filter(Boolean);
+    if (variations.length > 0) {
+      rawMessage = variations[Math.floor(Math.random() * variations.length)];
+    }
+  } else if (rawMessage.includes('\n---\n')) {
+    const variations = rawMessage.split('\n---\n').map((v) => v.trim()).filter(Boolean);
+    if (variations.length > 0) {
+      rawMessage = variations[Math.floor(Math.random() * variations.length)];
+    }
+  }
+
+  const formattedMessage = interpolateVariables(rawMessage, {
     username: event.commenterUsername,
     comment: event.commentText,
     post_url: options.permalink || event.permalink,

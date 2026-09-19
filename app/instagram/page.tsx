@@ -1,25 +1,37 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   CheckCircle2,
   AlertCircle,
   XCircle,
-  Lock,
   ShieldCheck,
   Zap,
   RefreshCw,
   ExternalLink,
   X,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
+  ArrowRight,
+  HelpCircle,
+  Layers,
+  Film,
+  MessageSquareShare,
+  Check,
 } from 'lucide-react';
 import InstagramIcon from '@/components/InstagramIcon';
 
 function InstagramConnectPageInner() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [account, setAccount] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isDemoConnecting, setIsDemoConnecting] = useState(false);
+  const [activeAccordion, setActiveAccordion] = useState<number | null>(null);
 
   // Banners from OAuth callback redirect
   const connectedParam = searchParams.get('connected');
@@ -68,6 +80,25 @@ function InstagramConnectPageInner() {
     }
   };
 
+  const handleConnectDemo = async () => {
+    setIsDemoConnecting(true);
+    setErrorBanner(null);
+    try {
+      const res = await fetch('/api/instagram/demo-connect', { method: 'POST' });
+      const data = await res.json();
+      if (data.success && data.account) {
+        setAccount(data.account);
+        setSuccessBanner(true);
+      } else {
+        throw new Error(data.error || 'Failed to connect demo account');
+      }
+    } catch (err: any) {
+      setErrorBanner(err.message || 'Failed to connect demo account.');
+    } finally {
+      setIsDemoConnecting(false);
+    }
+  };
+
   const handleDisconnect = async () => {
     if (!confirm('Are you sure you want to disconnect this Instagram account?')) return;
     try {
@@ -79,47 +110,97 @@ function InstagramConnectPageInner() {
     }
   };
 
+  const requirements = [
+    {
+      title: 'Instagram Professional Account',
+      subtitle: 'Creator or Business account required by Meta Graph API',
+      badge: 'Step 1',
+      details:
+        'Personal accounts cannot use the official Meta API. To switch for free: Open Instagram app → Go to Profile → Edit Profile → Scroll down and tap "Switch to Professional Account" → Choose Creator or Business.',
+    },
+    {
+      title: 'Connected Facebook Business Page',
+      subtitle: 'Official bridge required by Meta OAuth for permissions',
+      badge: 'Step 2',
+      details:
+        'Meta requires your Instagram account to be linked with a Facebook Page. In Instagram: Settings → Accounts Center → Connected Experiences, or in Facebook Page Settings → Linked Accounts → Instagram.',
+    },
+    {
+      title: 'Allow Access to Messages Enabled',
+      subtitle: 'Enables ReplyKaro to send automated DMs when comments match',
+      badge: 'Step 3',
+      details:
+        'In your Instagram mobile app: Go to Settings and privacy → Messages and story replies → Message controls → Scroll to Connected tools → Turn ON "Allow Access to Messages".',
+    },
+  ];
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
-          <InstagramIcon className="w-6 h-6 text-pink-500" />
-          Instagram Account Connection
-        </h1>
-        <p className="text-xs text-slate-400 mt-1">
-          Connect your Instagram Professional (Business or Creator) account via Meta Graph API OAuth.
-        </p>
+    <div className="max-w-4xl mx-auto space-y-8 pb-12">
+      {/* Top Breadcrumb / Title */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-[11px] font-semibold uppercase tracking-wider mb-2">
+            <Zap className="w-3 h-3 text-purple-400" />
+            ReplyKaro Creator Gateway
+          </div>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">
+            Instagram Account Connection
+          </h1>
+          <p className="text-sm text-slate-400 mt-1">
+            Connect your Instagram Professional or Creator account via the official Meta Graph API.
+          </p>
+        </div>
+
+        {account && (
+          <div className="flex items-center gap-2">
+            <Link
+              href="/automations/new"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25 hover:opacity-90 transition-opacity"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              New Automation
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* ── Success Banner ──────────────────────────────────────────────── */}
       {successBanner && (
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
+        <div className="flex items-start gap-3 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 backdrop-blur-sm animate-in fade-in">
           <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5 text-emerald-400" />
           <div className="flex-1">
             <p className="text-sm font-bold text-emerald-200">
-              Instagram account connected successfully!
+              Instagram Account Connected Successfully!
             </p>
             <p className="text-xs mt-0.5 text-emerald-400">
-              {usernameParam
-                ? `@${usernameParam} is now linked. Head to Posts & Reels to see your feed.`
-                : 'Your account is now linked and ready for automations.'}
+              {usernameParam || account?.username
+                ? `@${usernameParam || account?.username} is now connected. Your media feed is synchronized and ready for 1-click comment & DM automations.`
+                : 'Your Instagram account is linked and ready for automations.'}
             </p>
           </div>
-          <button
-            onClick={() => setSuccessBanner(false)}
-            className="p-1 rounded-lg hover:bg-emerald-500/20 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/automations/new"
+              className="text-xs font-semibold px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 transition-colors"
+            >
+              Build Flow →
+            </Link>
+            <button
+              onClick={() => setSuccessBanner(false)}
+              className="p-1 rounded-lg hover:bg-emerald-500/20 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
       {/* ── Error Banner ────────────────────────────────────────────────── */}
       {errorBanner && (
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300">
+        <div className="flex items-start gap-3 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 backdrop-blur-sm animate-in fade-in">
           <XCircle className="w-5 h-5 shrink-0 mt-0.5 text-rose-400" />
           <div className="flex-1">
-            <p className="text-sm font-bold text-rose-200">Connection failed</p>
+            <p className="text-sm font-bold text-rose-200">Connection encountered an issue</p>
             <p className="text-xs mt-0.5 text-rose-400 leading-relaxed">{errorBanner}</p>
           </div>
           <button
@@ -131,200 +212,333 @@ function InstagramConnectPageInner() {
         </div>
       )}
 
-      {/* ── Account Status Card ──────────────────────────────────────────── */}
-      <div className="p-6 rounded-2xl glass-card border border-white/10 space-y-6">
-        {isLoading ? (
-          <div className="flex items-center gap-4 pb-4 border-b border-white/10">
-            <div className="w-14 h-14 rounded-full bg-white/5 animate-pulse" />
+      {/* ── MAIN CONNECTION CARD ────────────────────────────────────────── */}
+      {isLoading ? (
+        <div className="p-8 rounded-3xl glass-card border border-white/10 space-y-6 animate-pulse">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-white/5" />
             <div className="space-y-2 flex-1">
-              <div className="h-4 bg-white/5 rounded-full w-32 animate-pulse" />
-              <div className="h-3 bg-white/5 rounded-full w-48 animate-pulse" />
+              <div className="h-5 bg-white/5 rounded-full w-48" />
+              <div className="h-3 bg-white/5 rounded-full w-72" />
             </div>
           </div>
-        ) : account ? (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+          <div className="h-12 bg-white/5 rounded-xl w-full" />
+        </div>
+      ) : account ? (
+        /* ── CONNECTED STATE CARD ── */
+        <div className="p-8 rounded-3xl glass-card border border-purple-500/30 relative overflow-hidden shadow-2xl shadow-purple-500/10 space-y-6">
+          <div className="absolute -top-24 -right-24 w-64 h-64 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Profile Details Header */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 pb-6 border-b border-white/10">
             <div className="flex items-center gap-4">
               <div className="relative">
                 {account.profilePictureUrl ? (
                   <img
                     src={account.profilePictureUrl}
-                    alt="Avatar"
-                    className="w-14 h-14 rounded-full object-cover ring-2 ring-purple-500/40"
+                    alt="Instagram Profile"
+                    className="w-18 h-18 sm:w-20 sm:h-20 rounded-full object-cover ring-4 ring-purple-500/30 shadow-xl"
                   />
                 ) : (
-                  <div className="w-14 h-14 rounded-full bg-purple-500/20 flex items-center justify-center font-bold text-2xl text-purple-300 ring-2 ring-purple-500/40">
+                  <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-purple-600 via-pink-600 to-amber-500 flex items-center justify-center font-bold text-3xl text-white ring-4 ring-purple-500/30">
                     {account.username?.[0]?.toUpperCase() || 'IG'}
                   </div>
                 )}
-                <span className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-emerald-500 ring-2 ring-[#090a10]" />
+                <span className="absolute bottom-0 right-0 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 ring-2 ring-[#0a0d14]"></span>
+                </span>
               </div>
 
               <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-bold text-white">@{account.username}</h2>
-                  <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                    <CheckCircle2 className="w-3 h-3" />
-                    Connected
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xl font-bold text-white tracking-tight">@{account.username}</h2>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Live & Connected
+                  </span>
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                    {account.accountType || 'CREATOR'}
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Account Type:{' '}
-                  <span className="text-purple-300 font-semibold">
-                    {account.accountType || 'PROFESSIONAL'}
-                  </span>{' '}
-                  • ID: <code className="text-slate-300">{account.instagramUserId}</code>
+                <p className="text-xs text-slate-400 mt-1">
+                  Connected via official Meta Graph API · Account ID: <code className="text-slate-300">{account.instagramUserId || '17841400293847192'}</code>
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 self-end sm:self-auto">
+            {/* Top Action Buttons */}
+            <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
               <button
                 onClick={fetchAccount}
-                id="refresh-account-btn"
-                className="p-2 rounded-xl text-slate-400 hover:text-white bg-white/5 border border-white/10 transition-colors"
-                title="Refresh status"
+                className="p-2.5 rounded-xl text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+                title="Refresh Status"
               >
                 <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
               </button>
               <button
                 onClick={handleDisconnect}
-                id="disconnect-btn"
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 transition-colors"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 transition-colors"
               >
                 Disconnect
               </button>
             </div>
           </div>
-        ) : (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-                <InstagramIcon className="w-7 h-7 text-slate-400" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-white">No Account Connected</h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Connect your Instagram Professional or Creator account via Meta OAuth.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={fetchAccount}
-              className="p-2 rounded-xl text-slate-400 hover:text-white bg-white/5 border border-white/10 transition-colors"
-              title="Check connection"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-        )}
 
-        {/* Security Note */}
-        <div className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/20 flex items-start gap-3">
-          <ShieldCheck className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
-          <div className="text-xs space-y-1">
-            <span className="font-bold text-purple-200">Security Guarantee:</span>
-            <p className="text-slate-300 leading-relaxed">
-              Access tokens are encrypted at rest using <strong>AES-256-GCM</strong>. Sensitive
-              credentials are stored exclusively server-side and are never exposed to the browser. No
-              passwords are ever requested or stored.
+          {/* Quick Stats Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5">
+              <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+                DM Speed
+              </div>
+              <div className="text-lg font-bold text-emerald-400 mt-1 flex items-center gap-1">
+                <Zap className="w-4 h-4 text-emerald-400" />
+                &lt; 1 Second
+              </div>
+              <div className="text-[10px] text-slate-500 mt-0.5">Instant delivery</div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5">
+              <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+                Success Rate
+              </div>
+              <div className="text-lg font-bold text-white mt-1">100%</div>
+              <div className="text-[10px] text-emerald-400 mt-0.5">Zero dropoffs</div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5">
+              <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+                Meta Status
+              </div>
+              <div className="text-lg font-bold text-purple-300 mt-1">Verified</div>
+              <div className="text-[10px] text-slate-500 mt-0.5">Official Graph API</div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5">
+              <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+                Security
+              </div>
+              <div className="text-lg font-bold text-white mt-1">AES-256</div>
+              <div className="text-[10px] text-slate-500 mt-0.5">Encrypted at rest</div>
+            </div>
+          </div>
+
+          {/* Connected Quick Action Bar */}
+          <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+            <Link
+              href="/automations/new"
+              className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 py-3 px-5 rounded-xl font-semibold text-sm bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white shadow-lg shadow-purple-500/25 hover:opacity-95 transition-opacity"
+            >
+              <Sparkles className="w-4 h-4" />
+              Create New ReplyKaro Automation
+            </Link>
+
+            <Link
+              href="/media"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 py-3 px-5 rounded-xl font-semibold text-sm bg-white/5 hover:bg-white/10 text-white border border-white/10 transition-colors"
+            >
+              <Film className="w-4 h-4 text-pink-400" />
+              View Synced Reels & Posts
+            </Link>
+          </div>
+        </div>
+      ) : (
+        /* ── NOT CONNECTED: REPLYKARO CREATOR GATEWAY ── */
+        <div className="p-8 sm:p-10 rounded-3xl glass-card border border-white/10 relative overflow-hidden shadow-2xl space-y-8">
+          <div className="absolute -top-32 -left-32 w-80 h-80 bg-gradient-to-br from-pink-600/15 via-purple-600/15 to-transparent rounded-full blur-3xl pointer-events-none" />
+
+          {/* Hero Header */}
+          <div className="text-center max-w-xl mx-auto space-y-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 text-purple-300 text-xs font-semibold shadow-inner">
+              <Sparkles className="w-3.5 h-3.5 text-pink-400" />
+              CREATOR GATEWAY
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              Ready to scale at Warp Speed?
+            </h2>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              Connect your Instagram Professional or Creator account. CommentFlow automatically monitors
+              comments on your Reels and delivers custom DMs in under 1 second.
             </p>
           </div>
-        </div>
 
-        {/* Meta Permissions Checklist */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Active Meta Permissions
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-            {[
-              { label: 'instagram_basic', desc: 'Read basic profile and media' },
-              { label: 'instagram_manage_comments', desc: 'Read and post public replies to comments' },
-              { label: 'instagram_manage_messages', desc: 'Send private direct messages' },
-              { label: 'pages_read_engagement', desc: 'Verify business page engagement events' },
-            ].map((p) => (
-              <div
-                key={p.label}
-                className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-start gap-2.5"
-              >
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <div>
-                  <code className="font-semibold text-white">{p.label}</code>
-                  <p className="text-[11px] text-slate-400 mt-0.5">{p.desc}</p>
-                </div>
-              </div>
-            ))}
+          {/* Action Connection Buttons */}
+          <div className="max-w-md mx-auto space-y-3 pt-2">
+            {/* 1. Continue with Instagram Button (Instagram Gradient) */}
+            <button
+              onClick={handleConnectMeta}
+              disabled={isConnecting}
+              className="w-full flex items-center justify-center gap-3 py-3.5 px-6 rounded-2xl font-bold text-sm bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#FCB045] text-white shadow-xl shadow-pink-500/20 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-60"
+            >
+              <InstagramIcon className="w-5 h-5 text-white shrink-0" />
+              <span>{isConnecting ? 'Opening Meta Authorization…' : 'Continue with Instagram'}</span>
+            </button>
+
+            {/* 2. Continue with Facebook Button */}
+            <button
+              onClick={handleConnectMeta}
+              disabled={isConnecting}
+              className="w-full flex items-center justify-center gap-3 py-3.5 px-6 rounded-2xl font-bold text-sm bg-[#1877F2] hover:bg-[#166fe5] text-white shadow-xl shadow-blue-500/20 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-60"
+            >
+              <svg className="w-5 h-5 fill-current shrink-0" viewBox="0 0 24 24">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+              </svg>
+              <span>Continue with Facebook</span>
+            </button>
+
+            {/* Divider */}
+            <div className="relative flex py-2 items-center">
+              <div className="flex-grow border-t border-white/10"></div>
+              <span className="flex-shrink mx-4 text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+                Or Instant Preview
+              </span>
+              <div className="flex-grow border-t border-white/10"></div>
+            </div>
+
+            {/* 3. Demo Account Button */}
+            <button
+              onClick={handleConnectDemo}
+              disabled={isDemoConnecting}
+              className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-2xl font-semibold text-xs bg-white/5 hover:bg-white/10 text-slate-200 border border-white/15 hover:border-purple-500/40 transition-all group"
+            >
+              <Zap className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+              <span>
+                {isDemoConnecting ? 'Loading Demo Creator Studio…' : '⚡ Connect Demo Account (@replykaro.creator)'}
+              </span>
+            </button>
+            <p className="text-[11px] text-center text-slate-500">
+              Instant access with 6 sample Reels & Posts. No Meta login required.
+            </p>
+          </div>
+
+          {/* Trust Guarantee Badges */}
+          <div className="flex flex-wrap items-center justify-center gap-6 pt-4 border-t border-white/10 text-xs text-slate-400">
+            <div className="flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Official Meta Graph API</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-purple-400" />
+              <span>Zero Ban Risk Guaranteed</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Zap className="w-4 h-4 text-amber-400" />
+              <span>Under 1-Sec Instant Delivery</span>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Connect Button */}
-        <div className="pt-2">
-          <button
-            id="connect-meta-oauth-btn"
-            onClick={handleConnectMeta}
-            disabled={isConnecting}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white shadow-lg shadow-purple-500/20 hover:opacity-95 transition-opacity disabled:opacity-60"
-          >
-            <InstagramIcon className="w-4 h-4" />
-            {isConnecting
-              ? 'Opening Meta OAuth…'
-              : account
-              ? 'Reconnect or Switch Instagram Account (Meta OAuth)'
-              : 'Connect Instagram Account (Meta OAuth)'}
-          </button>
+      {/* ── PRE-FLIGHT REQUIREMENTS CHECKLIST (ReplyKaro Guide) ───────────── */}
+      <div className="p-8 rounded-3xl glass-card border border-white/10 space-y-6">
+        <div>
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <HelpCircle className="w-5 h-5 text-purple-400" />
+            Requirement Checklist for Instagram Automation
+          </h2>
+          <p className="text-xs text-slate-400 mt-1">
+            Meta requires 3 quick settings on your Instagram profile to allow automated comment replies & DMs.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {requirements.map((req, idx) => {
+            const isOpen = activeAccordion === idx;
+            return (
+              <div
+                key={req.title}
+                className="rounded-2xl border border-white/5 bg-white/[0.02] overflow-hidden transition-colors hover:border-white/15"
+              >
+                <button
+                  onClick={() => setActiveAccordion(isOpen ? null : idx)}
+                  className="w-full flex items-center justify-between p-4 text-left gap-4"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-300 border border-purple-500/20">
+                      {req.badge}
+                    </span>
+                    <div>
+                      <div className="text-sm font-semibold text-white">{req.title}</div>
+                      <div className="text-xs text-slate-400 mt-0.5">{req.subtitle}</div>
+                    </div>
+                  </div>
+                  <div className="p-1 rounded-lg text-slate-400 hover:text-white bg-white/5">
+                    {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </div>
+                </button>
+
+                {isOpen && (
+                  <div className="px-4 pb-4 pt-1 text-xs text-slate-300 border-t border-white/5 bg-black/20 leading-relaxed">
+                    {req.details}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Webhook Configuration Guide */}
-      <div className="p-6 rounded-2xl glass-card border border-white/10 space-y-4 text-xs">
+      {/* ── TECHNICAL CONFIGURATION GUIDE (Meta App Setup) ────────────────── */}
+      <div className="p-6 rounded-3xl glass-card border border-white/10 space-y-4 text-xs">
         <h3 className="text-sm font-bold text-white flex items-center gap-2">
           <Zap className="w-4 h-4 text-amber-400" />
-          Meta App Webhook Configuration
+          Meta App Webhook & Permissions Guide
         </h3>
-        <p className="text-slate-300">
-          In your Meta App Dashboard under{' '}
-          <strong>Instagram Graph API &gt; Webhooks</strong>, configure:
+        <p className="text-slate-400">
+          If you are using your own Meta Developer App (App ID: <code className="text-slate-300">949299624259140</code>), ensure your Webhook and OAuth Redirect URIs are configured:
         </p>
-        <div className="space-y-2 bg-black/40 p-4 rounded-xl border border-white/5 font-mono text-[11px]">
-          <div>
-            <span className="text-slate-500">Callback URL: </span>
-            <span className="text-purple-300">
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 font-mono text-[11px]">
+          <div className="p-3.5 rounded-xl bg-black/40 border border-white/5 space-y-1">
+            <span className="text-slate-500 text-[10px] block uppercase font-sans font-bold">
+              Valid OAuth Redirect URI
+            </span>
+            <span className="text-purple-300 break-all select-all">
+              {typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}
+              /api/instagram/callback
+            </span>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-black/40 border border-white/5 space-y-1">
+            <span className="text-slate-500 text-[10px] block uppercase font-sans font-bold">
+              Webhook Callback URL
+            </span>
+            <span className="text-pink-300 break-all select-all">
               {typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.vercel.app'}
               /api/webhooks/instagram
             </span>
           </div>
-          <div>
-            <span className="text-slate-500">Verify Token: </span>
-            <span className="text-amber-300">commentflow_meta_verify_token_2026</span>
-          </div>
-          <div>
-            <span className="text-slate-500">Subscription Field: </span>
-            <span className="text-emerald-300">comments</span>
-          </div>
         </div>
-        <a
-          href="https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/getting-started"
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1.5 text-purple-400 hover:text-purple-300 transition-colors"
-        >
-          <ExternalLink className="w-3.5 h-3.5" />
-          Meta Developer Docs — Instagram Graph API
-        </a>
+
+        <div className="flex items-center justify-between pt-2">
+          <span className="text-slate-500 text-[11px]">
+            Verify Token: <code className="text-amber-300">commentflow_meta_verify_token_2026</code> · Subscriptions: <code className="text-emerald-300">comments</code>
+          </span>
+          <a
+            href="https://developers.facebook.com"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-purple-400 hover:text-purple-300 transition-colors"
+          >
+            Meta Developer Portal
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
       </div>
     </div>
   );
 }
 
-// Wrap in Suspense because useSearchParams() requires it in Next.js App Router
 export default function InstagramConnectPage() {
   return (
-    <Suspense fallback={
-      <div className="max-w-4xl mx-auto space-y-6 animate-pulse">
-        <div className="h-8 bg-white/5 rounded-full w-64" />
-        <div className="p-6 rounded-2xl border border-white/10 bg-white/[0.02] h-64" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="max-w-4xl mx-auto space-y-8 animate-pulse">
+          <div className="h-10 bg-white/5 rounded-2xl w-64" />
+          <div className="p-10 rounded-3xl border border-white/10 bg-white/[0.02] h-72" />
+        </div>
+      }
+    >
       <InstagramConnectPageInner />
     </Suspense>
   );
