@@ -48,7 +48,10 @@ export function verifyMetaHandshake(
   challenge: string | null,
   expectedVerifyToken?: string
 ): string | null {
-  const verifyToken = expectedVerifyToken || process.env.META_VERIFY_TOKEN;
+  const verifyToken =
+    expectedVerifyToken ||
+    process.env.INSTAGRAM_VERIFY_TOKEN ||
+    process.env.META_VERIFY_TOKEN;
   
   if (mode === 'subscribe' && token === verifyToken && challenge) {
     return challenge;
