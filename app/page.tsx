@@ -18,12 +18,13 @@ import {
 import MetricCard from '@/components/MetricCard';
 import ActivityFeed from '@/components/ActivityFeed';
 import WebhookSimulatorModal from '@/components/WebhookSimulatorModal';
+import InstagramIcon from '@/components/InstagramIcon';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>({
-    commentsDetected: 1842,
-    commentsMatched: 426,
-    messagesSent: 397,
+    commentsDetected: 0,
+    commentsMatched: 0,
+    messagesSent: 0,
     failed: 0,
   });
   const [automations, setAutomations] = useState<any[]>([]);
@@ -133,44 +134,77 @@ export default function DashboardPage() {
       </div>
 
       {/* Connected Account & Quick Status */}
-      <div className="p-4 rounded-2xl glass-card border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="relative">
-            <img
-              src={account?.profilePictureUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-              alt="Profile"
-              className="w-12 h-12 rounded-full object-cover ring-2 ring-purple-500/40"
-            />
-            <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-[#090a10]" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-white text-base">
-                @{account?.username || 'creator_studio'}
-              </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30">
-                {account?.accountType || 'CREATOR'} ACCOUNT
-              </span>
+      <div className="p-5 rounded-2xl glass-card border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+        {account ? (
+          <div className="flex items-center gap-3.5">
+            <div className="relative">
+              {account.profilePictureUrl ? (
+                <img
+                  src={account.profilePictureUrl}
+                  alt="Profile"
+                  className="w-12 h-12 rounded-full object-cover ring-2 ring-purple-500/40"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center font-bold text-purple-300 ring-2 ring-purple-500/40">
+                  {account.username?.[0]?.toUpperCase() || 'IG'}
+                </div>
+              )}
+              <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-[#090a10]" />
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Connected via Meta Graph API • Tokens encrypted at rest (AES-256-GCM)
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-white text-base">
+                  @{account.username}
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                  {account.accountType || 'PROFESSIONAL'} ACCOUNT
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Connected via Meta Graph API • Tokens encrypted at rest (AES-256-GCM)
+              </p>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-slate-500">
+              <InstagramIcon className="w-6 h-6 text-slate-400" />
+            </div>
+            <div>
+              <span className="font-bold text-white text-base">
+                No Instagram Account Connected
+              </span>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Connect your Instagram Professional account to start automating comments & DMs.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
-          <Link
-            href="/media"
-            className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10"
-          >
-            Browse Posts & Reels
-          </Link>
-          <Link
-            href="/instagram"
-            className="px-3 py-1.5 rounded-lg text-xs font-medium text-purple-300 hover:text-purple-200 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30"
-          >
-            Manage Connection
-          </Link>
+          {account ? (
+            <>
+              <Link
+                href="/media"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10"
+              >
+                Browse Posts & Reels
+              </Link>
+              <Link
+                href="/instagram"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-purple-300 hover:text-purple-200 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30"
+              >
+                Manage Connection
+              </Link>
+            </>
+          ) : (
+            <Link
+              href="/instagram"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-500/20 hover:opacity-90"
+            >
+              Connect Instagram
+            </Link>
+          )}
         </div>
       </div>
 
@@ -192,79 +226,95 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          <div className="space-y-3">
-            {automations.map((auto) => {
-              const isActive = auto.status === 'ACTIVE';
-              return (
-                <div
-                  key={auto.id}
-                  className="p-5 rounded-2xl glass-card border border-white/10 hover:border-white/20 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                >
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2.5">
-                      <span className="font-bold text-white text-sm">
-                        {auto.name}
-                      </span>
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+          {automations.length === 0 ? (
+            <div className="p-8 text-center rounded-2xl glass-card border border-white/10 space-y-2">
+              <p className="text-sm font-semibold text-slate-300">No automations created yet</p>
+              <p className="text-xs text-slate-500">
+                Click "Create Automation" to set up your first comment keyword trigger!
+              </p>
+              <Link
+                href="/automations/new"
+                className="inline-flex items-center gap-1.5 mt-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Create Automation
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {automations.map((auto) => {
+                const isActive = auto.status === 'ACTIVE';
+                return (
+                  <div
+                    key={auto.id}
+                    className="p-5 rounded-2xl glass-card border border-white/10 hover:border-white/20 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2.5">
+                        <span className="font-bold text-white text-sm">
+                          {auto.name}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isActive
+                              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 glow-badge-active'
+                              : 'bg-slate-500/15 text-slate-400 border border-slate-500/30'
+                          }`}
+                        >
+                          {auto.status}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                        <span>Keywords:</span>
+                        <span className="font-semibold text-purple-300">
+                          {auto.triggers?.map((t: any) => t.keyword).join(', ')}
+                        </span>
+                        <span>•</span>
+                        <span>Actions:</span>
+                        <span className="text-slate-300">
+                          {auto.actions?.length > 1
+                            ? 'Public Reply + DM'
+                            : auto.actions?.[0]?.actionType === 'PUBLIC_REPLY'
+                            ? 'Public Reply'
+                            : 'Private DM'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end sm:self-center">
+                      <button
+                        onClick={() => toggleStatus(auto.id, auto.status)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
                           isActive
-                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 glow-badge-active'
-                            : 'bg-slate-500/15 text-slate-400 border border-slate-500/30'
+                            ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30'
+                            : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
                         }`}
                       >
-                        {auto.status}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                      <span>Keywords:</span>
-                      <span className="font-semibold text-purple-300">
-                        {auto.triggers?.map((t: any) => t.keyword).join(', ')}
-                      </span>
-                      <span>•</span>
-                      <span>Actions:</span>
-                      <span className="text-slate-300">
-                        {auto.actions?.length > 1
-                          ? 'Public Reply + DM'
-                          : auto.actions?.[0]?.actionType === 'PUBLIC_REPLY'
-                          ? 'Public Reply'
-                          : 'Private DM'}
-                      </span>
+                        {isActive ? (
+                          <>
+                            <Pause className="w-3.5 h-3.5" />
+                            Pause
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-3.5 h-3.5" />
+                            Activate
+                          </>
+                        )}
+                      </button>
+                      <Link
+                        href={`/automations/${auto.id}`}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10"
+                      >
+                        Edit
+                      </Link>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2 self-end sm:self-center">
-                    <button
-                      onClick={() => toggleStatus(auto.id, auto.status)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                        isActive
-                          ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30'
-                          : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                      }`}
-                    >
-                      {isActive ? (
-                        <>
-                          <Pause className="w-3.5 h-3.5" />
-                          Pause
-                        </>
-                      ) : (
-                        <>
-                          <Play className="w-3.5 h-3.5" />
-                          Activate
-                        </>
-                      )}
-                    </button>
-                    <Link
-                      href={`/automations/${auto.id}`}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10"
-                    >
-                      Edit
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Right Col: Live Activity Stream */}

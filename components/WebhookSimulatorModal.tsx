@@ -27,7 +27,7 @@ export default function WebhookSimulatorModal({
   const [commentText, setCommentText] = useState('I want the AI roadmap please!');
   const [commenterUsername, setCommenterUsername] = useState('alex_creator');
   const [mediaList, setMediaList] = useState<any[]>([]);
-  const [selectedMediaId, setSelectedMediaId] = useState('reel_learn_ai');
+  const [selectedMediaId, setSelectedMediaId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [simResult, setSimResult] = useState<any>(null);
   const [fixedCommentId, setFixedCommentId] = useState<string | null>(null);
@@ -120,22 +120,16 @@ export default function WebhookSimulatorModal({
           </span>
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => setPreset('AI', 'reel_learn_ai')}
+              onClick={() => setPreset('AI')}
               className="px-2.5 py-1 rounded-md text-xs bg-purple-500/10 text-purple-300 border border-purple-500/25 hover:bg-purple-500/20 transition-colors"
             >
               Exact Match ("AI")
             </button>
             <button
-              onClick={() => setPreset('I want the AI roadmap please!', 'reel_learn_ai')}
+              onClick={() => setPreset('I want the AI roadmap please!')}
               className="px-2.5 py-1 rounded-md text-xs bg-blue-500/10 text-blue-300 border border-blue-500/25 hover:bg-blue-500/20 transition-colors"
             >
-              Contains Keyword ("AI")
-            </button>
-            <button
-              onClick={() => setPreset('Send me the ML course coupon', 'reel_ml_course')}
-              className="px-2.5 py-1 rounded-md text-xs bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 hover:bg-emerald-500/20 transition-colors"
-            >
-              Paused Automation ("ML")
+              Contains Keyword
             </button>
             <button
               onClick={() => setPreset('Awesome video! Love your setup.')}
@@ -147,7 +141,7 @@ export default function WebhookSimulatorModal({
               onClick={() => {
                 const fixed = 'duplicate_comment_id_999';
                 setFixedCommentId(fixed);
-                setPreset('AI roadmap test', 'reel_learn_ai');
+                setPreset('AI roadmap test');
               }}
               className="px-2.5 py-1 rounded-md text-xs bg-amber-500/10 text-amber-300 border border-amber-500/25 hover:bg-amber-500/20 transition-colors"
             >
@@ -168,14 +162,8 @@ export default function WebhookSimulatorModal({
                 onChange={(e) => setSelectedMediaId(e.target.value)}
                 className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500"
               >
-                <option value="reel_learn_ai" className="bg-[#0f121d]">
-                  Reel: "Learn AI in 30 Days"
-                </option>
-                <option value="reel_ml_course" className="bg-[#0f121d]">
-                  Reel: "My ML Course"
-                </option>
-                <option value="post_workflow_tips" className="bg-[#0f121d]">
-                  Post: "5 Automations"
+                <option value="" className="bg-[#0f121d]">
+                  All Posts & Reels (Global)
                 </option>
                 {mediaList.map((m) => (
                   <option
@@ -183,7 +171,7 @@ export default function WebhookSimulatorModal({
                     value={m.instagramMediaId || m.id}
                     className="bg-[#0f121d]"
                   >
-                    {m.mediaType}: {m.caption?.slice(0, 30)}...
+                    {m.mediaType}: {m.caption?.slice(0, 30) || 'Post'}...
                   </option>
                 ))}
               </select>

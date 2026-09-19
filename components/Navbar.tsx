@@ -103,13 +103,22 @@ export default function Navbar() {
                 href="/instagram"
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:border-white/20 transition-colors text-xs text-slate-300"
               >
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <span className="font-medium text-slate-200">
-                  @{account?.username || 'creator_studio'}
-                </span>
+                {account?.username ? (
+                  <>
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span className="font-medium text-slate-200">
+                      @{account.username}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-slate-500"></span>
+                    <span className="text-slate-400">Connect IG</span>
+                  </>
+                )}
               </Link>
             </div>
 
