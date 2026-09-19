@@ -55,9 +55,15 @@ export async function processCommentEvent(
   );
 
   const activeAutomations = allAutomations.filter(
-    (auto: import('./types').Automation) =>
-      auto.status === 'ACTIVE' &&
-      (!auto.mediaId || candidateMediaIds.has(auto.mediaId))
+    (auto: import('./types').Automation) => {
+      if (auto.status !== 'ACTIVE') return false;
+      if (!auto.mediaId) return true; // applies to all posts & reels
+      return (
+        candidateMediaIds.has(auto.mediaId) ||
+        Boolean(auto.media?.instagramMediaId && candidateMediaIds.has(auto.media.instagramMediaId)) ||
+        Boolean(auto.media?.id && candidateMediaIds.has(auto.media.id))
+      );
+    }
   );
 
   if (activeAutomations.length === 0) {

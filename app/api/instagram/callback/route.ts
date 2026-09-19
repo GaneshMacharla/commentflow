@@ -111,6 +111,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // ── Step 5.1: Subscribe account to webhooks on Meta's server ─────────────
+    try {
+      await fetch(
+        `https://graph.instagram.com/v21.0/${accountInfo.id}/subscribed_apps?subscribed_fields=comments,messages&access_token=${finalToken}`,
+        { method: 'POST' }
+      );
+    } catch (subErr) {
+      console.warn('Could not auto-subscribe account to webhooks:', subErr);
+    }
+
     // ── Step 6: Redirect to success ───────────────────────────────────────────
     const successResponse = NextResponse.redirect(
       new URL(`/instagram?connected=true&username=${encodeURIComponent(accountInfo.username)}`, origin)

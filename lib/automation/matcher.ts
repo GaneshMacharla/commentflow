@@ -14,6 +14,11 @@ export function checkSingleKeyword(
 
   if (!normKeyword) return false;
 
+  // Wildcard support: '*' or 'any' triggers on any comment
+  if (normKeyword === '*' || normKeyword === 'any' || normKeyword === 'all') {
+    return normComment.length > 0;
+  }
+
   switch (matchType) {
     case 'EXACT':
       return normComment === normKeyword;

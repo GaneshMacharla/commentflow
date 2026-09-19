@@ -33,14 +33,12 @@ export async function POST(request: NextRequest) {
     const rawBody = await request.text();
     const signature = request.headers.get('x-hub-signature-256');
 
-    // If app secret is set in environment, enforce HMAC validation
-    if (process.env.META_APP_SECRET && !signature) {
-      return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
-    }
+    const appSecret = process.env.INSTAGRAM_APP_SECRET || process.env.META_APP_SECRET;
 
-    if (process.env.META_APP_SECRET && signature) {
-      const isValid = verifyMetaSignature(rawBody, signature);
+    if (appSecret && signature) {
+      const isValid = verifyMetaSignature(rawBody, signature, appSecret);
       if (!isValid) {
+        console.error('Invalid HMAC signature received from Meta webhook');
         return NextResponse.json({ error: 'Invalid HMAC signature' }, { status: 401 });
       }
     }

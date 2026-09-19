@@ -49,4 +49,15 @@ describe('Automation Keyword Matcher', () => {
     const matchOnlyOne = matchComment('I only want AI', keywords, 'CONTAINS', 'ALL');
     expect(matchOnlyOne.matched).toBe(false);
   });
+
+  it('should support Wildcard * (Any Comment) matching', () => {
+    const result1 = matchComment('Great post bro!', ['*'], 'CONTAINS', 'ANY');
+    expect(result1.matched).toBe(true);
+
+    const result2 = matchComment('any text here 🚀', ['*'], 'CONTAINS', 'ANY');
+    expect(result2.matched).toBe(true);
+
+    const resultEmpty = matchComment('', ['*'], 'CONTAINS', 'ANY');
+    expect(resultEmpty.matched).toBe(false);
+  });
 });

@@ -9,7 +9,7 @@ export function verifyMetaSignature(
   signatureHeader: string | null,
   appSecret?: string
 ): boolean {
-  const secret = appSecret || process.env.META_APP_SECRET;
+  const secret = appSecret || process.env.INSTAGRAM_APP_SECRET || process.env.META_APP_SECRET;
   
   // If no secret configured or header missing, cannot verify
   if (!secret || !signatureHeader) {
