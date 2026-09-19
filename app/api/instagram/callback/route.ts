@@ -5,7 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 import { isSupabaseConfigured, saveConnectedAccountLocally } from '@/lib/supabase/db';
 
 export async function GET(request: NextRequest) {
-  const origin = request.nextUrl.origin;
+  const origin = (process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin).replace(/\/$/, '');
 
   try {
     const searchParams = request.nextUrl.searchParams;
