@@ -4,18 +4,18 @@ import { getDashboardStats, getActivityLogs } from '../lib/supabase/db';
 import { NormalizedCommentEvent } from '../lib/automation/types';
 
 describe('Live Reel Comment End-to-End Verification', () => {
-  it('should process a Reel comment for AWS Reel and update dashboard stats', async () => {
+  it('should process comment "Hi" from evokevoice on AWS Reel', async () => {
     const statsBefore = await getDashboardStats();
 
     const event: NormalizedCommentEvent = {
-      eventId: `verify_reel_comment_${Date.now()}`,
-      commentId: `verify_comment_${Date.now()}`,
+      eventId: `verify_evokevoice_${Date.now()}`,
+      commentId: `comment_evokevoice_${Date.now()}`,
       mediaId: '18119152729940306', // The active AWS Reel ID
       mediaProductType: 'REELS',
       instagramAccountId: '28985672461036531',
-      commenterUsername: 'reel_lead_tester',
-      commenterId: 'tester_id_101',
-      commentText: 'AWS link please!',
+      commenterUsername: 'evokevoice',
+      commenterId: 'tester_id_evokevoice',
+      commentText: 'Hi',
       timestamp: new Date().toISOString(),
     };
 
@@ -31,7 +31,7 @@ describe('Live Reel Comment End-to-End Verification', () => {
     const logs = await getActivityLogs(5);
     const matchedLog = logs.find((l: any) => l.instagramCommentId === event.commentId);
     expect(matchedLog).toBeDefined();
-    expect(matchedLog?.commenterUsername).toBe('reel_lead_tester');
-    expect(matchedLog?.commentText).toBe('AWS link please!');
+    expect(matchedLog?.commenterUsername).toBe('evokevoice');
+    expect(matchedLog?.commentText).toBe('Hi');
   });
 });
