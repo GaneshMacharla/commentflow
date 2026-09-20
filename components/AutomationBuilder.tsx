@@ -518,7 +518,10 @@ export default function AutomationBuilder({
                     {mediaList.map((media) => {
                       const mediaId = media.instagramMediaId || media.id;
                       const isSelected = selectedMediaId === mediaId;
-                      const isReel = media.mediaType === 'VIDEO';
+                      const isReel =
+                        media.mediaType === 'REEL' ||
+                        media.mediaType === 'VIDEO' ||
+                        media.media_product_type === 'REELS';
 
                       return (
                         <div

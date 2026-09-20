@@ -50,6 +50,8 @@ export interface NormalizedCommentEvent {
   commenterId: string;
   commentText: string;
   permalink?: string;
+  parentId?: string;
+  mediaProductType?: string;
   timestamp?: string;
 }
 

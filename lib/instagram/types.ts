@@ -26,24 +26,35 @@ export interface InstagramMediaItem {
 }
 
 export interface InstagramWebhookEntry {
-  id: string; // Instagram account ID
+  id: string; // Instagram account ID or Facebook Page ID
   time: number;
   changes?: {
     field: string;
     value: {
-      from: {
-        id: string;
-        username: string;
+      from?: {
+        id?: string;
+        username?: string;
+        name?: string;
       };
-      media: {
-        id: string;
+      media?: {
+        id?: string;
         media_product_type?: string;
-      };
-      id: string; // comment_id
-      text: string;
+      } | string;
+      media_id?: string;
+      post_id?: string;
+      target_id?: string;
+      id?: string; // comment_id
+      comment_id?: string;
+      text?: string;
+      message?: string;
+      item?: string;
       parent_id?: string;
+      username?: string;
+      user_id?: string;
+      commenter_id?: string;
     };
   }[];
+  messaging?: any[];
 }
 
 export interface InstagramWebhookPayload {

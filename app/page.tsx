@@ -58,6 +58,28 @@ export default function DashboardPage() {
   // Slide-over state for automating a Reel directly
   const [slideOverMedia, setSlideOverMedia] = useState<MediaItem | null>(null);
   const [slideOverOpen, setSlideOverOpen] = useState(false);
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [detectStatus, setDetectStatus] = useState<string | null>(null);
+
+  const handleDetectComments = async () => {
+    setIsDetecting(true);
+    setDetectStatus('Scanning Reels for incoming comments...');
+    try {
+      const res = await fetch('/api/instagram/comments/detect', { method: 'POST' });
+      const data = await res.json();
+      if (data.detectedCommentsCount > 0) {
+        setDetectStatus(`🎉 Successfully detected ${data.detectedCommentsCount} comment(s) and executed automations!`);
+      } else {
+        setDetectStatus(`✅ Scanned ${data.checkedMediaCount || 0} Reel(s). System is actively listening for webhooks.`);
+      }
+      loadData();
+    } catch (err: any) {
+      setDetectStatus('❌ Scan failed: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsDetecting(false);
+      setTimeout(() => setDetectStatus(null), 6000);
+    }
+  };
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -160,7 +182,17 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {account && (
+            <button
+              onClick={handleDetectComments}
+              disabled={isDetecting}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-purple-600/15 hover:bg-purple-600/25 text-purple-200 border border-purple-500/40 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-purple-400 ${isDetecting ? 'animate-spin' : ''}`} />
+              <span>{isDetecting ? 'Scanning Reels…' : 'Scan Reel Comments'}</span>
+            </button>
+          )}
           <button
             onClick={() => setSimulatorOpen(true)}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-purple-300 border border-purple-500/20 transition-all cursor-pointer"
@@ -177,6 +209,22 @@ export default function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* Real-time Detect Comments Status Banner */}
+      {detectStatus && (
+        <div className="p-3.5 rounded-2xl bg-purple-950/40 border border-purple-500/30 text-xs text-purple-200 flex items-center justify-between animate-in fade-in">
+          <div className="flex items-center gap-2.5">
+            <Zap className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>{detectStatus}</span>
+          </div>
+          <button
+            onClick={() => setDetectStatus(null)}
+            className="text-slate-400 hover:text-white p-1"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* ── NOT CONNECTED: REPLYKARO HERO GATEWAY ───────────────────────── */}
       {!isLoading && !account && (

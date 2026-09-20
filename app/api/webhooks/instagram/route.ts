@@ -46,9 +46,15 @@ export async function POST(request: NextRequest) {
     const payload: InstagramWebhookPayload = JSON.parse(rawBody);
     const events = normalizeWebhookPayload(payload);
 
+    console.log(`[Meta Webhook] Ingested webhook: parsed ${events.length} event(s) from payload`);
+    if (events.length === 0) {
+      console.warn('[Meta Webhook] Payload contained no recognizable comment events:', rawBody.slice(0, 300));
+    }
+
     // Process comment events asynchronously and return 200 quickly to Meta
     for (const event of events) {
       try {
+        console.log(`[Meta Webhook] Processing event for media ${event.mediaId || 'unknown'}, comment: "${event.commentText}" by @${event.commenterUsername}`);
         await processCommentEvent(event, { isSimulation: false });
       } catch (procErr) {
         console.error('Error processing event:', event.commentId, procErr);

@@ -48,6 +48,8 @@ export default function WebhookSimulatorModal({
     }
   }, [isOpen]);
 
+  const [isLiveMode, setIsLiveMode] = useState(false);
+
   if (!isOpen) return null;
 
   const handleSimulate = async (customId?: string) => {
@@ -65,6 +67,7 @@ export default function WebhookSimulatorModal({
           commenterUsername,
           mediaId: selectedMediaId,
           commentId,
+          isSimulation: !isLiveMode,
         }),
       });
 
@@ -146,6 +149,42 @@ export default function WebhookSimulatorModal({
               className="px-2.5 py-1 rounded-md text-xs bg-amber-500/10 text-amber-300 border border-amber-500/25 hover:bg-amber-500/20 transition-colors"
             >
               Test Idempotency (Duplicate ID)
+            </button>
+          </div>
+        </div>
+
+        {/* Execution Mode Selector */}
+        <div className="mb-5 p-3 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between">
+          <div>
+            <span className="text-xs font-bold text-white block">Execution Mode</span>
+            <span className="text-[11px] text-slate-400">
+              {isLiveMode
+                ? '🔴 Live Execution — sends real Instagram Public Reply & Direct Message'
+                : '🛡️ Safe Simulation — audits pipeline and logs event without sending real DMs'}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 p-1 bg-black/40 rounded-xl border border-white/10">
+            <button
+              type="button"
+              onClick={() => setIsLiveMode(false)}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                !isLiveMode
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Simulation
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsLiveMode(true)}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                isLiveMode
+                  ? 'bg-rose-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Live API
             </button>
           </div>
         </div>

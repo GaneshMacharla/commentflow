@@ -18,11 +18,14 @@ export async function POST(request: NextRequest) {
     const mediaId = body.mediaId || 'reel_learn_ai';
     const commentId = body.commentId || `sim_comment_${Date.now()}`;
 
+    const isSimulation = body.isSimulation ?? true;
+
     const normalizedEvent: NormalizedCommentEvent = {
       eventId: commentId,
       commentId,
       mediaId,
-      instagramAccountId: account?.id || 'acc-1',
+      mediaProductType: 'REELS',
+      instagramAccountId: account?.instagramUserId || account?.id || 'acc-1',
       commenterUsername,
       commenterId: `sim_user_${Date.now()}`,
       commentText,
@@ -31,7 +34,8 @@ export async function POST(request: NextRequest) {
     };
 
     const result = await processCommentEvent(normalizedEvent, {
-      isSimulation: true,
+      isSimulation,
+      force: true,
     });
 
     return NextResponse.json({

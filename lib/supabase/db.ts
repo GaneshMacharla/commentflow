@@ -604,7 +604,7 @@ export async function logAutomationEvent(event: {
   status: EventStatus;
   errorMessage?: string;
 }) {
-  const id = `evt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const id = crypto.randomUUID();
   const item = {
     id,
     ...event,
@@ -613,20 +613,55 @@ export async function logAutomationEvent(event: {
 
   if (isSupabaseConfigured()) {
     try {
-      await supabaseAdmin.from('automation_events').insert([
-        {
-          id,
-          automation_id: event.automationId || null,
-          instagram_account_id: event.instagramAccountId,
-          instagram_comment_id: event.instagramCommentId,
-          commenter_username: event.commenterUsername,
-          comment_text: event.commentText,
-          action_type: event.actionType,
-          response_content: event.responseContent,
-          status: event.status,
-          error_message: event.errorMessage,
-        },
-      ]);
+      let dbAccountId: string | null = null;
+      if (isValidUuid(event.instagramAccountId)) {
+        dbAccountId = event.instagramAccountId;
+      } else {
+        // Look up by instagram_user_id
+        const { data: acc } = await supabaseAdmin
+          .from('instagram_accounts')
+          .select('id')
+          .eq('instagram_user_id', event.instagramAccountId)
+          .maybeSingle();
+
+        if (acc?.id) {
+          dbAccountId = acc.id;
+        } else {
+          // Fallback to primary connected account
+          const { data: primary } = await supabaseAdmin
+            .from('instagram_accounts')
+            .select('id')
+            .limit(1)
+            .maybeSingle();
+          dbAccountId = primary?.id || null;
+        }
+      }
+
+      if (dbAccountId) {
+        const dbAutoId =
+          event.automationId && isValidUuid(event.automationId)
+            ? event.automationId
+            : null;
+
+        const { error: insErr } = await supabaseAdmin.from('automation_events').insert([
+          {
+            id,
+            automation_id: dbAutoId,
+            instagram_account_id: dbAccountId,
+            instagram_comment_id: event.instagramCommentId,
+            commenter_username: event.commenterUsername,
+            comment_text: event.commentText,
+            action_type: event.actionType,
+            response_content: event.responseContent,
+            status: event.status,
+            error_message: event.errorMessage,
+          },
+        ]);
+
+        if (insErr) {
+          console.error('Supabase automation_events insert error:', insErr);
+        }
+      }
     } catch (err) {
       console.error('Failed to log event in Supabase:', err);
     }
