@@ -3,9 +3,10 @@ import { exchangeCodeForToken, getLongLivedToken, getInstagramAccountInfo } from
 import { encryptToken } from '@/lib/security/encryption';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { isSupabaseConfigured, saveConnectedAccountLocally } from '@/lib/supabase/db';
+import { resolveRequestOrigin } from '../connect/route';
 
 export async function GET(request: NextRequest) {
-  const origin = (process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin).replace(/\/$/, '');
+  const origin = resolveRequestOrigin(request);
 
   try {
     const searchParams = request.nextUrl.searchParams;

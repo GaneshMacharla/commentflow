@@ -95,20 +95,51 @@ async function resolveUserId(preferredUserId?: string): Promise<string> {
 }
 
 async function resolveAccountId(preferredAccountId?: string): Promise<string> {
-  if (preferredAccountId && isValidUuid(preferredAccountId)) {
-    return preferredAccountId;
-  }
   if (isSupabaseConfigured()) {
     try {
-      const { data: accounts } = await supabaseAdmin.from('instagram_accounts').select('id').limit(1);
+      // 1. If preferred is a valid UUID, check if it already exists
+      if (preferredAccountId && isValidUuid(preferredAccountId)) {
+        const { data: existing } = await supabaseAdmin
+          .from('instagram_accounts')
+          .select('id')
+          .eq('id', preferredAccountId)
+          .maybeSingle();
+        if (existing?.id) return existing.id;
+      }
+
+      // 2. Check if ANY account exists
+      const { data: accounts } = await supabaseAdmin
+        .from('instagram_accounts')
+        .select('id')
+        .limit(1);
       if (accounts && accounts.length > 0 && accounts[0].id) {
         return accounts[0].id;
       }
+
+      // 3. In a fresh DB, create a default connected account row so FK constraints never fail
+      const newAccountId = preferredAccountId && isValidUuid(preferredAccountId) ? preferredAccountId : crypto.randomUUID();
+      const { data: created } = await supabaseAdmin
+        .from('instagram_accounts')
+        .insert([
+          {
+            id: newAccountId,
+            user_id: null,
+            instagram_user_id: process.env.INSTAGRAM_ACCOUNT_ID || 'primary_account',
+            username: process.env.INSTAGRAM_USERNAME || 'instagram_creator',
+            access_token_encrypted: 'mock_encrypted_token',
+            status: 'CONNECTED',
+          },
+        ])
+        .select('id')
+        .maybeSingle();
+
+      if (created?.id) return created.id;
+      return newAccountId;
     } catch (e) {
-      console.warn('Could not query account for account_id:', e);
+      console.warn('Could not query/create account for account_id:', e);
     }
   }
-  return crypto.randomUUID();
+  return preferredAccountId && isValidUuid(preferredAccountId) ? preferredAccountId : crypto.randomUUID();
 }
 
 async function resolveMediaId(
@@ -457,23 +488,6 @@ export async function deleteAutomation(id: string): Promise<boolean> {
  * Retrieves the connected Instagram account.
  */
 export async function getConnectedAccount(identifier?: string) {
-  // Support single Instagram Professional account configured directly via environment variables
-  const envToken = process.env.INSTAGRAM_ACCESS_TOKEN || process.env.META_ACCESS_TOKEN;
-  const envAccountId = process.env.INSTAGRAM_ACCOUNT_ID || process.env.META_ACCOUNT_ID;
-  if (envToken && (!identifier || identifier === envAccountId || identifier === 'user-default')) {
-    return {
-      id: envAccountId || 'ig-env-primary',
-      userId: 'user-default',
-      instagramUserId: envAccountId || 'primary',
-      username: process.env.INSTAGRAM_USERNAME || 'instagram_creator',
-      profilePictureUrl: '',
-      accountType: 'CREATOR',
-      accessToken: envToken,
-      status: 'CONNECTED',
-      createdAt: new Date().toISOString(),
-    };
-  }
-
   if (isSupabaseConfigured()) {
     try {
       let query = supabaseAdmin
@@ -517,6 +531,24 @@ export async function getConnectedAccount(identifier?: string) {
     } catch (err) {
       console.error('Failed to fetch IG account from Supabase:', err);
     }
+  }
+
+  // Support single Instagram Professional account configured directly via environment variables
+  const envToken = process.env.INSTAGRAM_ACCESS_TOKEN || process.env.META_ACCESS_TOKEN;
+  const envAccountId = process.env.INSTAGRAM_ACCOUNT_ID || process.env.META_ACCOUNT_ID;
+  const isCustomEnv = Boolean(envToken && !envToken.startsWith('your_') && !envToken.includes('placeholder'));
+  if (isCustomEnv && (!identifier || identifier === envAccountId || identifier === 'user-default')) {
+    return {
+      id: envAccountId || 'ig-env-primary',
+      userId: 'user-default',
+      instagramUserId: envAccountId || 'primary',
+      username: process.env.INSTAGRAM_USERNAME || 'instagram_creator',
+      profilePictureUrl: '',
+      accountType: 'CREATOR',
+      accessToken: envToken,
+      status: 'CONNECTED',
+      createdAt: new Date().toISOString(),
+    };
   }
 
   const acc = localStore.accounts[0];
