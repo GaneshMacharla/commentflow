@@ -9,6 +9,8 @@ export function isSupabaseConfigured(): boolean {
   return Boolean(url && !url.includes('mock') && !url.includes('your-project'));
 }
 
+import { QueuedComment, EnqueueCommentInput } from '../queue/types';
+
 // In-memory fallback state for zero-config local development and testing
 interface LocalStore {
   processedEvents: Set<string>;
@@ -16,6 +18,7 @@ interface LocalStore {
   media: any[];
   automations: Automation[];
   events: any[];
+  queuedComments: QueuedComment[];
 }
 
 const localStore: LocalStore = {
@@ -24,6 +27,7 @@ const localStore: LocalStore = {
   media: [],
   automations: [],
   events: [],
+  queuedComments: [],
 };
 
 /**
@@ -85,6 +89,23 @@ async function resolveUserId(preferredUserId?: string): Promise<string> {
       }
     } catch (e) {
       console.warn('Could not query/create profile for user_id:', e);
+    }
+  }
+  return crypto.randomUUID();
+}
+
+async function resolveAccountId(preferredAccountId?: string): Promise<string> {
+  if (preferredAccountId && isValidUuid(preferredAccountId)) {
+    return preferredAccountId;
+  }
+  if (isSupabaseConfigured()) {
+    try {
+      const { data: accounts } = await supabaseAdmin.from('instagram_accounts').select('id').limit(1);
+      if (accounts && accounts.length > 0 && accounts[0].id) {
+        return accounts[0].id;
+      }
+    } catch (e) {
+      console.warn('Could not query account for account_id:', e);
     }
   }
   return crypto.randomUUID();
@@ -290,10 +311,12 @@ export async function createAutomation(payload: {
 
   let dbMediaId: string | null = null;
   let targetUserId = payload.userId || 'user-default';
+  let targetAccountId = payload.instagramAccountId;
 
   if (isSupabaseConfigured()) {
     targetUserId = await resolveUserId(payload.userId);
-    dbMediaId = await resolveMediaId(payload.instagramAccountId, payload.mediaId, {
+    targetAccountId = await resolveAccountId(payload.instagramAccountId);
+    dbMediaId = await resolveMediaId(targetAccountId, payload.mediaId, {
       caption: payload.mediaCaption,
       thumbnailUrl: payload.mediaThumbnailUrl,
       mediaType: payload.mediaType,
@@ -306,7 +329,7 @@ export async function createAutomation(payload: {
         {
           id,
           user_id: targetUserId,
-          instagram_account_id: payload.instagramAccountId,
+          instagram_account_id: targetAccountId,
           media_id: dbMediaId,
           name: payload.name,
           status: 'ACTIVE',
@@ -434,6 +457,23 @@ export async function deleteAutomation(id: string): Promise<boolean> {
  * Retrieves the connected Instagram account.
  */
 export async function getConnectedAccount(identifier?: string) {
+  // Support single Instagram Professional account configured directly via environment variables
+  const envToken = process.env.INSTAGRAM_ACCESS_TOKEN || process.env.META_ACCESS_TOKEN;
+  const envAccountId = process.env.INSTAGRAM_ACCOUNT_ID || process.env.META_ACCOUNT_ID;
+  if (envToken && (!identifier || identifier === envAccountId || identifier === 'user-default')) {
+    return {
+      id: envAccountId || 'ig-env-primary',
+      userId: 'user-default',
+      instagramUserId: envAccountId || 'primary',
+      username: process.env.INSTAGRAM_USERNAME || 'instagram_creator',
+      profilePictureUrl: '',
+      accountType: 'CREATOR',
+      accessToken: envToken,
+      status: 'CONNECTED',
+      createdAt: new Date().toISOString(),
+    };
+  }
+
   if (isSupabaseConfigured()) {
     try {
       let query = supabaseAdmin
@@ -730,22 +770,319 @@ export async function getActivityLogs(limit = 50, status?: string) {
 }
 
 /**
- * Computes dashboard statistics.
+ * Computes dashboard statistics including durable queue metrics.
  */
 export async function getDashboardStats() {
   const events = await getActivityLogs(1000);
+  const queueItems = await getQueuedComments(1000);
   
-  const commentsDetected = events.length;
-  const matched = events.filter((e) => e.status === 'SENT' || e.status === 'SIMULATED_SENT').length;
-  const messagesSent = events.filter(
-    (e) => (e.status === 'SENT' || e.status === 'SIMULATED_SENT') && e.actionType === 'PRIVATE_MESSAGE'
-  ).length;
-  const failed = events.filter((e) => e.status === 'FAILED').length;
+  const commentsDetected = Math.max(events.length, queueItems.length);
+  const matched = Math.max(
+    events.filter((e) => e.status === 'SENT' || e.status === 'SIMULATED_SENT').length,
+    queueItems.filter((q) => q.matchedKeyword !== null && q.matchedKeyword !== undefined).length
+  );
+  const messagesSent = Math.max(
+    events.filter(
+      (e) => (e.status === 'SENT' || e.status === 'SIMULATED_SENT') && e.actionType === 'PRIVATE_MESSAGE'
+    ).length,
+    queueItems.filter((q) => q.dmStatus === 'SENT').length
+  );
+  const failed = Math.max(
+    events.filter((e) => e.status === 'FAILED').length,
+    queueItems.filter((q) => q.processingStatus === 'FAILED' || q.dmStatus === 'FAILED').length
+  );
+  const pending = queueItems.filter((q) => q.processingStatus === 'PENDING').length;
+  const processing = queueItems.filter((q) => q.processingStatus === 'PROCESSING').length;
 
   return {
     commentsDetected: commentsDetected || 0,
     commentsMatched: matched || 0,
     messagesSent: messagesSent || 0,
     failed: failed || 0,
+    pending: pending || 0,
+    processing: processing || 0,
+  };
+}
+
+/**
+ * Enqueues an Instagram comment into the durable queue (instagram_comments table).
+ * Deduplicates automatically via UNIQUE(instagram_comment_id).
+ */
+export async function enqueueInstagramComment(
+  input: EnqueueCommentInput
+): Promise<{ success: boolean; duplicate: boolean; comment: QueuedComment }> {
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+
+  const newComment: QueuedComment = {
+    id,
+    instagramCommentId: input.commentId,
+    instagramAccountId: input.instagramAccountId,
+    commentText: input.commentText,
+    username: input.username || null,
+    mediaId: input.mediaId || null,
+    matchedKeyword: null,
+    processingStatus: 'PENDING',
+    dmStatus: 'PENDING',
+    retryCount: 0,
+    nextRetryAt: now,
+    errorMessage: null,
+    createdAt: now,
+    processingStartedAt: null,
+    processedAt: null,
+  };
+
+  if (isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('instagram_comments')
+        .insert([
+          {
+            id: newComment.id,
+            instagram_comment_id: newComment.instagramCommentId,
+            instagram_account_id: newComment.instagramAccountId,
+            comment_text: newComment.commentText,
+            username: newComment.username,
+            media_id: newComment.mediaId,
+            processing_status: 'PENDING',
+            dm_status: 'PENDING',
+            retry_count: 0,
+            next_retry_at: now,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        // Code 23505 is PostgreSQL unique constraint violation
+        if (error.code === '23505') {
+          const { data: existing } = await supabaseAdmin
+            .from('instagram_comments')
+            .select('*')
+            .eq('instagram_comment_id', input.commentId)
+            .maybeSingle();
+
+          return {
+            success: false,
+            duplicate: true,
+            comment: existing ? mapRowToQueuedComment(existing) : newComment,
+          };
+        }
+        console.error('Supabase queue insert error:', error);
+      } else if (data) {
+        return { success: true, duplicate: false, comment: mapRowToQueuedComment(data) };
+      }
+    } catch (err) {
+      console.error('Failed to insert comment into Supabase durable queue:', err);
+    }
+  }
+
+  // Local fallback for dev/testing
+  const existingLocal = localStore.queuedComments.find(
+    (c) => c.instagramCommentId === input.commentId
+  );
+  if (existingLocal) {
+    return { success: false, duplicate: true, comment: existingLocal };
+  }
+
+  localStore.queuedComments.push(newComment);
+  return { success: true, duplicate: false, comment: newComment };
+}
+
+/**
+ * Claims pending comments atomically using SKIP LOCKED in Supabase or atomic array splicing in localStore.
+ */
+export async function claimPendingComments(batchSize: number = 25): Promise<QueuedComment[]> {
+  const now = new Date().toISOString();
+
+  if (isSupabaseConfigured()) {
+    try {
+      // 1. Attempt PostgreSQL stored procedure with FOR UPDATE SKIP LOCKED
+      const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
+        'claim_pending_instagram_comments',
+        { batch_size: batchSize }
+      );
+
+      if (!rpcError && rpcData && Array.isArray(rpcData)) {
+        return rpcData.map(mapRowToQueuedComment);
+      }
+
+      // 2. Fallback query if RPC has not been executed yet
+      const { data: pendingRows } = await supabaseAdmin
+        .from('instagram_comments')
+        .select('*')
+        .eq('processing_status', 'PENDING')
+        .lte('next_retry_at', now)
+        .order('created_at', { ascending: true })
+        .limit(batchSize);
+
+      if (pendingRows && pendingRows.length > 0) {
+        const ids = pendingRows.map((r: any) => r.id);
+        const { data: claimedRows } = await supabaseAdmin
+          .from('instagram_comments')
+          .update({
+            processing_status: 'PROCESSING',
+            processing_started_at: now,
+          })
+          .in('id', ids)
+          .eq('processing_status', 'PENDING')
+          .select();
+
+        if (claimedRows && claimedRows.length > 0) {
+          return claimedRows.map(mapRowToQueuedComment);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to claim pending comments from Supabase:', err);
+    }
+  }
+
+  // Local fallback (also handles case when remote table is not yet migrated)
+  const nowDate = new Date();
+  const eligible = localStore.queuedComments.filter(
+    (c) =>
+      c.processingStatus === 'PENDING' &&
+      (!c.nextRetryAt || new Date(c.nextRetryAt) <= nowDate)
+  ).slice(0, batchSize);
+
+  for (const c of eligible) {
+    c.processingStatus = 'PROCESSING';
+    c.processingStartedAt = now;
+  }
+
+  return [...eligible];
+}
+
+/**
+ * Updates status, error message, and metadata for a queued comment.
+ */
+export async function updateQueuedComment(
+  id: string,
+  patch: Partial<QueuedComment>
+): Promise<QueuedComment | null> {
+  const now = new Date().toISOString();
+
+  if (isSupabaseConfigured()) {
+    try {
+      const dbPatch: any = {};
+      if (patch.processingStatus !== undefined) dbPatch.processing_status = patch.processingStatus;
+      if (patch.dmStatus !== undefined) dbPatch.dm_status = patch.dmStatus;
+      if (patch.matchedKeyword !== undefined) dbPatch.matched_keyword = patch.matchedKeyword;
+      if (patch.retryCount !== undefined) dbPatch.retry_count = patch.retryCount;
+      if (patch.nextRetryAt !== undefined) dbPatch.next_retry_at = patch.nextRetryAt;
+      if (patch.errorMessage !== undefined) dbPatch.error_message = patch.errorMessage;
+      if (patch.processingStartedAt !== undefined) dbPatch.processing_started_at = patch.processingStartedAt;
+      if (patch.processedAt !== undefined) dbPatch.processed_at = patch.processedAt;
+
+      const { data, error } = await supabaseAdmin
+        .from('instagram_comments')
+        .update(dbPatch)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (!error && data) {
+        return mapRowToQueuedComment(data);
+      }
+    } catch (err) {
+      console.error('Failed to update queued comment in Supabase:', err);
+    }
+  }
+
+  const idx = localStore.queuedComments.findIndex((c) => c.id === id);
+  if (idx !== -1) {
+    localStore.queuedComments[idx] = {
+      ...localStore.queuedComments[idx],
+      ...patch,
+    };
+    return localStore.queuedComments[idx];
+  }
+
+  return null;
+}
+
+/**
+ * Finds a queued comment by its Instagram comment ID.
+ */
+export async function getQueuedCommentByCommentId(
+  commentId: string
+): Promise<QueuedComment | null> {
+  if (isSupabaseConfigured()) {
+    try {
+      const { data } = await supabaseAdmin
+        .from('instagram_comments')
+        .select('*')
+        .eq('instagram_comment_id', commentId)
+        .maybeSingle();
+
+      if (data) return mapRowToQueuedComment(data);
+    } catch (err) {
+      console.error('Failed to query comment by comment ID:', err);
+    }
+  }
+
+  return localStore.queuedComments.find((c) => c.instagramCommentId === commentId) || null;
+}
+
+/**
+ * Retrieves queued comments for inspection and dashboard display.
+ */
+export async function getQueuedComments(
+  limit = 50,
+  status?: string
+): Promise<QueuedComment[]> {
+  if (isSupabaseConfigured()) {
+    try {
+      let query = supabaseAdmin
+        .from('instagram_comments')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (status && status !== 'ALL') {
+        query = query.eq('processing_status', status);
+      }
+
+      const { data, error } = await query;
+      if (!error && data) {
+        return data.map(mapRowToQueuedComment);
+      }
+    } catch (err) {
+      console.error('Failed to fetch queued comments from Supabase:', err);
+    }
+  }
+
+  let list = localStore.queuedComments;
+  if (status && status !== 'ALL') {
+    list = list.filter((c) => c.processingStatus === status);
+  }
+  return list.slice(0, limit);
+}
+
+/**
+ * Clears the in-memory queue store (useful in tests).
+ */
+export function clearQueueLocally() {
+  localStore.queuedComments = [];
+  localStore.processedEvents.clear();
+}
+
+function mapRowToQueuedComment(row: any): QueuedComment {
+  return {
+    id: row.id,
+    instagramCommentId: row.instagram_comment_id,
+    instagramAccountId: row.instagram_account_id,
+    commentText: row.comment_text,
+    username: row.username,
+    mediaId: row.media_id,
+    matchedKeyword: row.matched_keyword,
+    processingStatus: row.processing_status,
+    dmStatus: row.dm_status,
+    retryCount: row.retry_count ?? 0,
+    nextRetryAt: row.next_retry_at,
+    errorMessage: row.error_message,
+    createdAt: row.created_at,
+    processingStartedAt: row.processing_started_at,
+    processedAt: row.processed_at,
   };
 }

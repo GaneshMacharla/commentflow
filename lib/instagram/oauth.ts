@@ -18,9 +18,9 @@ const INSTAGRAM_SCOPES = [
  */
 export function getInstagramOAuthUrl(state: string, redirectUri: string): string {
   const appId =
-    process.env.INSTAGRAM_APP_ID ||
     process.env.META_APP_ID ||
-    '1785118029469438';
+    process.env.INSTAGRAM_APP_ID ||
+    '';
 
   const params = new URLSearchParams({
     client_id: appId,
@@ -48,13 +48,13 @@ export async function exchangeCodeForToken(
   redirectUri: string
 ): Promise<MetaTokenResponse> {
   const appId =
-    process.env.INSTAGRAM_APP_ID ||
     process.env.META_APP_ID ||
-    '1785118029469438';
+    process.env.INSTAGRAM_APP_ID ||
+    '';
   const appSecret =
-    process.env.INSTAGRAM_APP_SECRET ||
     process.env.META_APP_SECRET ||
-    '7910891f8299ac5e25afb07d96f084e3';
+    process.env.INSTAGRAM_APP_SECRET ||
+    '';
 
   const formData = new URLSearchParams({
     client_id: appId,
@@ -89,9 +89,9 @@ export async function exchangeCodeForToken(
  */
 export async function getLongLivedToken(shortToken: string): Promise<MetaTokenResponse> {
   const appSecret =
-    process.env.INSTAGRAM_APP_SECRET ||
     process.env.META_APP_SECRET ||
-    '7910891f8299ac5e25afb07d96f084e3';
+    process.env.INSTAGRAM_APP_SECRET ||
+    '';
 
   const params = new URLSearchParams({
     grant_type: 'ig_exchange_token',

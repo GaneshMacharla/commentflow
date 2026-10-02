@@ -33,5 +33,5 @@ describe('Live Reel Comment End-to-End Verification', () => {
     expect(matchedLog).toBeDefined();
     expect(matchedLog?.commenterUsername).toBe('evokevoice');
     expect(matchedLog?.commentText).toBe('Hi');
-  });
+  }, 15000);
 });

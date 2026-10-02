@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   X,
+  Clock,
 } from 'lucide-react';
 import MetricCard from '@/components/MetricCard';
 import ActivityFeed from '@/components/ActivityFeed';
@@ -59,7 +60,26 @@ export default function DashboardPage() {
   const [slideOverMedia, setSlideOverMedia] = useState<MediaItem | null>(null);
   const [slideOverOpen, setSlideOverOpen] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
+  const [isProcessingQueue, setIsProcessingQueue] = useState(false);
   const [detectStatus, setDetectStatus] = useState<string | null>(null);
+
+  const handleProcessQueue = async () => {
+    setIsProcessingQueue(true);
+    setDetectStatus('Draining pending items from durable queue...');
+    try {
+      const res = await fetch('/api/queue/process', { method: 'POST' });
+      const data = await res.json();
+      setDetectStatus(
+        `⚡ Queue processed: ${data.completed || 0} completed, ${data.retried || 0} retried, ${data.skipped || 0} skipped, ${data.failed || 0} failed.`
+      );
+      loadData();
+    } catch (err: any) {
+      setDetectStatus('❌ Queue processing failed: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsProcessingQueue(false);
+      setTimeout(() => setDetectStatus(null), 6000);
+    }
+  };
 
   const handleDetectComments = async () => {
     setIsDetecting(true);
@@ -193,6 +213,15 @@ export default function DashboardPage() {
               <span>{isDetecting ? 'Scanning Reels…' : 'Scan Reel Comments'}</span>
             </button>
           )}
+          <button
+            onClick={handleProcessQueue}
+            disabled={isProcessingQueue}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-blue-600/15 hover:bg-blue-600/25 text-blue-200 border border-blue-500/40 transition-all cursor-pointer disabled:opacity-50"
+            title="Drain pending items from the durable queue"
+          >
+            <Clock className={`w-3.5 h-3.5 text-blue-400 ${isProcessingQueue ? 'animate-spin' : ''}`} />
+            <span>{isProcessingQueue ? 'Processing…' : `Queue (${stats.pending || 0})`}</span>
+          </button>
           <button
             onClick={() => setSimulatorOpen(true)}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-purple-300 border border-purple-500/20 transition-all cursor-pointer"
@@ -339,37 +368,48 @@ export default function DashboardPage() {
       )}
 
       {/* ── METRIC CARDS ROW ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         <MetricCard
-          title="Comments Detected"
+          title="Comments"
           value={stats.commentsDetected}
-          subtitle="Processed through webhooks"
+          subtitle="Total detected"
           icon={MessageCircle}
           accentColor="blue"
-          trend="+14% this week"
         />
         <MetricCard
-          title="Comments Matched"
+          title="Matches"
           value={stats.commentsMatched}
-          subtitle="Trigger keywords matched"
+          subtitle="Keyword triggers"
           icon={Sparkles}
           accentColor="purple"
-          trend="+22% this week"
         />
         <MetricCard
-          title="Messages Sent"
+          title="DMs Sent"
           value={stats.messagesSent}
-          subtitle="Direct messages delivered"
+          subtitle="Delivered via Meta"
           icon={Mail}
           accentColor="emerald"
-          trend="99.8% success"
         />
         <MetricCard
-          title="Delivery Failures"
+          title="Failures"
           value={stats.failed}
-          subtitle="Rate limits or API restrictions"
+          subtitle="Rate limits / errors"
           icon={AlertTriangle}
           accentColor={stats.failed > 0 ? 'rose' : 'emerald'}
+        />
+        <MetricCard
+          title="Pending Queue"
+          value={stats.pending || 0}
+          subtitle="Durable queue items"
+          icon={Clock}
+          accentColor={stats.pending > 0 ? 'amber' : 'purple'}
+        />
+        <MetricCard
+          title="In Processing"
+          value={stats.processing || 0}
+          subtitle="Active workers"
+          icon={RefreshCw}
+          accentColor="blue"
         />
       </div>
 

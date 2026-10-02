@@ -50,6 +50,7 @@ export function verifyMetaHandshake(
 ): string | null {
   const verifyToken =
     expectedVerifyToken ||
+    process.env.WEBHOOK_VERIFY_TOKEN ||
     process.env.INSTAGRAM_VERIFY_TOKEN ||
     process.env.META_VERIFY_TOKEN;
   

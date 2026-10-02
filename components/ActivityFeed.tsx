@@ -45,6 +45,7 @@ export default function ActivityFeed({ initialLogs = [], compact = false }: Acti
   const getStatusBadge = (status: string, error?: string) => {
     switch (status) {
       case 'SENT':
+      case 'COMPLETED':
         return (
           <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
             <CheckCircle2 className="w-3 h-3" />
@@ -56,6 +57,20 @@ export default function ActivityFeed({ initialLogs = [], compact = false }: Acti
           <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30">
             <CheckCircle2 className="w-3 h-3" />
             Simulated
+          </span>
+        );
+      case 'PROCESSING':
+        return (
+          <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/30 animate-pulse">
+            <Clock className="w-3 h-3" />
+            Processing
+          </span>
+        );
+      case 'PENDING':
+        return (
+          <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
+            <Clock className="w-3 h-3" />
+            Queued
           </span>
         );
       case 'FAILED':
@@ -83,7 +98,7 @@ export default function ActivityFeed({ initialLogs = [], compact = false }: Acti
       {!compact && (
         <div className="flex items-center gap-2 pb-2 overflow-x-auto">
           <Filter className="w-4 h-4 text-slate-400 mr-1" />
-          {['ALL', 'SENT', 'FAILED', 'SKIPPED'].map((f) => (
+          {['ALL', 'SENT', 'PENDING', 'FAILED', 'SKIPPED'].map((f) => (
             <button
               key={f}
               onClick={() => setStatusFilter(f)}
